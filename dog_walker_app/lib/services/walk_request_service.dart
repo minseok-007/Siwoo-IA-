@@ -27,8 +27,24 @@ class WalkRequestService {
   }
 
   Future<List<WalkRequestModel>> getRequestsByWalker(String walkerId) async {
-    final query = await walkRequestsCollection.where('walkerId', isEqualTo: walkerId).get();
-    return query.docs.map((doc) => WalkRequestModel.fromFirestore(doc)).toList();
+    try {
+      // Temporarily remove orderBy to avoid index requirement
+      final querySnapshot = await walkRequestsCollection
+          .where('walkerId', isEqualTo: walkerId)
+          .get();
+      
+      // Sort in memory instead
+      final requests = querySnapshot.docs
+          .map((doc) => WalkRequestModel.fromFirestore(doc))
+          .toList();
+      
+      // Sort by time descending
+      requests.sort((a, b) => b.time.compareTo(a.time));
+      
+      return requests;
+    } catch (e) {
+      throw Exception('Failed to fetch walker requests: $e');
+    }
   }
 
   Future<WalkRequestModel?> getRequestById(String requestId) async {

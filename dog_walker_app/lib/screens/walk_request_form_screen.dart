@@ -47,6 +47,10 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
       location: _locationController.text.trim(),
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       status: widget.request?.status ?? WalkRequestStatus.pending,
+      duration: 30, // Default 30 minutes
+      budget: 50.0, // Default $50 budget
+      createdAt: widget.request?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
     );
     final service = WalkRequestService();
     if (widget.request == null) {

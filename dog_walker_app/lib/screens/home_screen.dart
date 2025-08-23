@@ -8,6 +8,8 @@ import 'dog_list_screen.dart';
 import 'walk_request_list_screen.dart';
 import 'chat_list_screen.dart';
 import 'verification_screen.dart';
+import 'scheduled_walks_screen.dart';
+import 'smart_matching_screen.dart'; // Added import for SmartMatchingScreen
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -185,6 +187,22 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  const SizedBox(height: 12),
+                  _buildActionCard(
+                    context,
+                    'Smart Matching',
+                    'Find compatible walkers using AI',
+                    Icons.psychology,
+                    Colors.deepPurple,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SmartMatchingScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ] else ...[
                   // Dog Walker Actions
                   _buildActionCard(
@@ -210,9 +228,11 @@ class HomeScreen extends StatelessWidget {
                     Icons.calendar_today,
                     Colors.blue,
                     () {
-                      // Placeholder for schedule screen
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Schedule - Coming Soon!')),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ScheduledWalksScreen(),
+                        ),
                       );
                     },
                   ),
@@ -271,7 +291,7 @@ class HomeScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => VerificationScreen(isVerified: user.isVerified ?? false),
+                        builder: (context) => const VerificationScreen(isVerified: false),
                       ),
                     );
                   },

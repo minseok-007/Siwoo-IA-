@@ -17,7 +17,6 @@ class _EditDogScreenState extends State<EditDogScreen> {
   final _breedController = TextEditingController();
   final _ageController = TextEditingController();
   final _photoUrlController = TextEditingController();
-  final _notesController = TextEditingController();
   bool _saving = false;
 
   @override
@@ -27,8 +26,7 @@ class _EditDogScreenState extends State<EditDogScreen> {
       _nameController.text = widget.dog!.name;
       _breedController.text = widget.dog!.breed;
       _ageController.text = widget.dog!.age.toString();
-      _photoUrlController.text = widget.dog!.photoUrl ?? '';
-      _notesController.text = widget.dog!.notes ?? '';
+      _photoUrlController.text = widget.dog!.profileImageUrl ?? '';
     }
   }
 
@@ -38,7 +36,6 @@ class _EditDogScreenState extends State<EditDogScreen> {
     _breedController.dispose();
     _ageController.dispose();
     _photoUrlController.dispose();
-    _notesController.dispose();
     super.dispose();
   }
 
@@ -51,8 +48,9 @@ class _EditDogScreenState extends State<EditDogScreen> {
       name: _nameController.text.trim(),
       breed: _breedController.text.trim(),
       age: int.tryParse(_ageController.text.trim()) ?? 0,
-      photoUrl: _photoUrlController.text.trim().isEmpty ? null : _photoUrlController.text.trim(),
-      notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+      profileImageUrl: _photoUrlController.text.trim().isEmpty ? null : _photoUrlController.text.trim(),
+      createdAt: widget.dog?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
     );
     final dogService = DogService();
     if (widget.dog == null) {
@@ -121,16 +119,6 @@ class _EditDogScreenState extends State<EditDogScreen> {
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                  prefixIcon: Icon(Icons.note),
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
               ),
               const SizedBox(height: 32),
               ElevatedButton.icon(

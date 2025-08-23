@@ -2,6 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum UserType { dogOwner, dogWalker }
 
+enum DogSize { small, medium, large }
+
+enum ExperienceLevel { beginner, intermediate, expert }
+
 class UserModel {
   final String id;
   final String email;
@@ -9,22 +13,21 @@ class UserModel {
   final String phoneNumber;
   final UserType userType;
   final String? profileImageUrl;
-  final String? bio;
   final DateTime createdAt;
   final DateTime updatedAt;
   
-  // Dog Owner specific fields
-  final List<String>? dogIds;
-  final String? address;
-  
-  // Dog Walker specific fields
-  final List<String>? experience;
-  final double? hourlyRate;
-  final List<String>? availableDays;
-  final List<String>? availableTimes;
-  final bool? isVerified;
-  final double? rating;
-  final int? totalWalks;
+  // Advanced matching preferences
+  final GeoPoint? location; // Firestore GeoPoint
+  final List<DogSize> preferredDogSizes; // For walkers
+  final List<DogSize> dogSizes; // For owners (their dogs' sizes)
+  final ExperienceLevel experienceLevel; // For walkers
+  final double hourlyRate; // For walkers
+  final List<String> preferredTimeSlots; // e.g., ["morning", "afternoon", "evening"]
+  final List<int> availableDays; // 0=Sunday, 1=Monday, etc.
+  final double maxDistance; // Maximum distance willing to travel (km)
+  final double rating; // Average rating
+  final int totalWalks; // Total walks completed
+  final List<String> specializations; // e.g., ["puppy", "senior", "reactive"]
 
   UserModel({
     required this.id,
@@ -33,42 +36,59 @@ class UserModel {
     required this.phoneNumber,
     required this.userType,
     this.profileImageUrl,
-    this.bio,
     required this.createdAt,
     required this.updatedAt,
-    this.dogIds,
-    this.address,
-    this.experience,
-    this.hourlyRate,
-    this.availableDays,
-    this.availableTimes,
-    this.isVerified,
-    this.rating,
-    this.totalWalks,
+    this.location,
+    this.preferredDogSizes = const [],
+    this.dogSizes = const [],
+    this.experienceLevel = ExperienceLevel.beginner,
+    this.hourlyRate = 0.0,
+    this.preferredTimeSlots = const [],
+    this.availableDays = const [],
+    this.maxDistance = 10.0,
+    this.rating = 0.0,
+    this.totalWalks = 0,
+    this.specializations = const [],
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    
+    final data = doc.data() as Map<String, dynamic>;
     return UserModel(
       id: doc.id,
       email: data['email'] ?? '',
       fullName: data['fullName'] ?? '',
       phoneNumber: data['phoneNumber'] ?? '',
-      userType: data['userType'] == 'dogOwner' ? UserType.dogOwner : UserType.dogWalker,
+      userType: UserType.values.firstWhere(
+        (e) => e.toString() == 'UserType.${data['userType']}',
+        orElse: () => UserType.dogOwner,
+      ),
       profileImageUrl: data['profileImageUrl'],
-      bio: data['bio'],
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
-      dogIds: data['dogIds'] != null ? List<String>.from(data['dogIds']) : null,
-      address: data['address'],
-      experience: data['experience'] != null ? List<String>.from(data['experience']) : null,
-      hourlyRate: data['hourlyRate']?.toDouble(),
-      availableDays: data['availableDays'] != null ? List<String>.from(data['availableDays']) : null,
-      availableTimes: data['availableTimes'] != null ? List<String>.from(data['availableTimes']) : null,
-      isVerified: data['isVerified'] ?? false,
-      rating: data['rating']?.toDouble(),
-      totalWalks: data['totalWalks'],
+      location: data['location'],
+      preferredDogSizes: (data['preferredDogSizes'] as List<dynamic>?)
+          ?.map((e) => DogSize.values.firstWhere(
+                (size) => size.toString() == 'DogSize.$e',
+                orElse: () => DogSize.medium,
+              ))
+          .toList() ?? [],
+      dogSizes: (data['dogSizes'] as List<dynamic>?)
+          ?.map((e) => DogSize.values.firstWhere(
+                (size) => size.toString() == 'DogSize.$e',
+                orElse: () => DogSize.medium,
+              ))
+          .toList() ?? [],
+      experienceLevel: ExperienceLevel.values.firstWhere(
+        (e) => e.toString() == 'ExperienceLevel.${data['experienceLevel']}',
+        orElse: () => ExperienceLevel.beginner,
+      ),
+      hourlyRate: (data['hourlyRate'] ?? 0.0).toDouble(),
+      preferredTimeSlots: List<String>.from(data['preferredTimeSlots'] ?? []),
+      availableDays: List<int>.from(data['availableDays'] ?? []),
+      maxDistance: (data['maxDistance'] ?? 10.0).toDouble(),
+      rating: (data['rating'] ?? 0.0).toDouble(),
+      totalWalks: data['totalWalks'] ?? 0,
+      specializations: List<String>.from(data['specializations'] ?? []),
     );
   }
 
@@ -77,20 +97,21 @@ class UserModel {
       'email': email,
       'fullName': fullName,
       'phoneNumber': phoneNumber,
-      'userType': userType == UserType.dogOwner ? 'dogOwner' : 'dogWalker',
+      'userType': userType.toString().split('.').last,
       'profileImageUrl': profileImageUrl,
-      'bio': bio,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
-      'dogIds': dogIds,
-      'address': address,
-      'experience': experience,
+      'location': location,
+      'preferredDogSizes': preferredDogSizes.map((e) => e.toString().split('.').last).toList(),
+      'dogSizes': dogSizes.map((e) => e.toString().split('.').last).toList(),
+      'experienceLevel': experienceLevel.toString().split('.').last,
       'hourlyRate': hourlyRate,
+      'preferredTimeSlots': preferredTimeSlots,
       'availableDays': availableDays,
-      'availableTimes': availableTimes,
-      'isVerified': isVerified,
+      'maxDistance': maxDistance,
       'rating': rating,
       'totalWalks': totalWalks,
+      'specializations': specializations,
     };
   }
 
@@ -101,18 +122,19 @@ class UserModel {
     String? phoneNumber,
     UserType? userType,
     String? profileImageUrl,
-    String? bio,
     DateTime? createdAt,
     DateTime? updatedAt,
-    List<String>? dogIds,
-    String? address,
-    List<String>? experience,
+    GeoPoint? location,
+    List<DogSize>? preferredDogSizes,
+    List<DogSize>? dogSizes,
+    ExperienceLevel? experienceLevel,
     double? hourlyRate,
-    List<String>? availableDays,
-    List<String>? availableTimes,
-    bool? isVerified,
+    List<String>? preferredTimeSlots,
+    List<int>? availableDays,
+    double? maxDistance,
     double? rating,
     int? totalWalks,
+    List<String>? specializations,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -121,18 +143,19 @@ class UserModel {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       userType: userType ?? this.userType,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      bio: bio ?? this.bio,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      dogIds: dogIds ?? this.dogIds,
-      address: address ?? this.address,
-      experience: experience ?? this.experience,
+      location: location ?? this.location,
+      preferredDogSizes: preferredDogSizes ?? this.preferredDogSizes,
+      dogSizes: dogSizes ?? this.dogSizes,
+      experienceLevel: experienceLevel ?? this.experienceLevel,
       hourlyRate: hourlyRate ?? this.hourlyRate,
+      preferredTimeSlots: preferredTimeSlots ?? this.preferredTimeSlots,
       availableDays: availableDays ?? this.availableDays,
-      availableTimes: availableTimes ?? this.availableTimes,
-      isVerified: isVerified ?? this.isVerified,
+      maxDistance: maxDistance ?? this.maxDistance,
       rating: rating ?? this.rating,
       totalWalks: totalWalks ?? this.totalWalks,
+      specializations: specializations ?? this.specializations,
     );
   }
 } 

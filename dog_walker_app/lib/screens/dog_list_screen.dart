@@ -121,9 +121,9 @@ class _DogListScreenState extends State<DogListScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: ListTile(
-                        leading: dog.photoUrl != null
+                        leading: dog.profileImageUrl != null
                             ? CircleAvatar(
-                                backgroundImage: NetworkImage(dog.photoUrl!),
+                                backgroundImage: NetworkImage(dog.profileImageUrl!),
                                 radius: 28,
                               )
                             : CircleAvatar(
