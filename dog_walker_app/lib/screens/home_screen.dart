@@ -7,17 +7,22 @@ import 'walk_request_form_screen.dart';
 import 'dog_list_screen.dart';
 import 'walk_request_list_screen.dart';
 import 'chat_list_screen.dart';
-import 'verification_screen.dart';
 import 'scheduled_walks_screen.dart';
+import 'profile_screen.dart';
+import 'settings_screen.dart';
 import 'smart_matching_screen.dart'; // Added import for SmartMatchingScreen
+import '../l10n/app_localizations.dart';
 
+/// 로그인 후 진입하는 홈 대시보드.
+/// - 사용자 유형에 따라 빠른 액션을 분기해 제공하는 UX 설계입니다.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'PawPal',
@@ -94,7 +99,7 @@ class HomeScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Welcome back,',
+                                  t.t('welcome_back_comma'),
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,
                                     color: Colors.white70,
@@ -110,8 +115,8 @@ class HomeScreen extends StatelessWidget {
                                 ),
                                 Text(
                                   user.userType == UserType.dogOwner 
-                                      ? 'Dog Owner' 
-                                      : 'Dog Walker',
+                                      ? t.t('dog_owner') 
+                                      : t.t('dog_walker'),
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,
                                     color: Colors.white70,
@@ -129,7 +134,7 @@ class HomeScreen extends StatelessWidget {
 
                 // Quick Actions
                 Text(
-                  'Quick Actions',
+                  t.t('quick_actions'),
                   style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -142,8 +147,8 @@ class HomeScreen extends StatelessWidget {
                   // Dog Owner Actions
                   _buildActionCard(
                     context,
-                    'Post Walk Request',
-                    'Find a walker for your dog',
+                    t.t('post_walk_request'),
+                    t.t('post_walk_request_desc'),
                     Icons.add_circle_outline,
                     Colors.green,
                     () {
@@ -158,8 +163,8 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildActionCard(
                     context,
-                    'My Dogs',
-                    'Manage your dog profiles',
+                    t.t('my_dogs'),
+                    t.t('my_dogs_desc'),
                     Icons.pets,
                     Colors.orange,
                     () {
@@ -174,8 +179,8 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildActionCard(
                     context,
-                    'My Walk Requests',
-                    'View and manage your walk requests',
+                    t.t('my_walk_requests'),
+                    t.t('my_walk_requests_desc'),
                     Icons.history,
                     Colors.purple,
                     () {
@@ -190,8 +195,8 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildActionCard(
                     context,
-                    'Smart Matching',
-                    'Find compatible walkers using AI',
+                    t.t('smart_matching'),
+                    t.t('smart_matching_desc'),
                     Icons.psychology,
                     Colors.deepPurple,
                     () {
@@ -207,8 +212,8 @@ class HomeScreen extends StatelessWidget {
                   // Dog Walker Actions
                   _buildActionCard(
                     context,
-                    'Available Walks',
-                    'Browse walk requests',
+                    t.t('available_walks'),
+                    t.t('available_walks_desc'),
                     Icons.search,
                     Colors.green,
                     () {
@@ -223,8 +228,8 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildActionCard(
                     context,
-                    'My Schedule',
-                    'Manage your availability',
+                    t.t('my_schedule'),
+                    t.t('my_schedule_desc'),
                     Icons.calendar_today,
                     Colors.blue,
                     () {
@@ -239,14 +244,14 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildActionCard(
                     context,
-                    'Earnings',
-                    'View your earnings',
+                    t.t('earnings'),
+                    t.t('earnings_desc'),
                     Icons.attach_money,
                     Colors.amber,
                     () {
                       // Placeholder for earnings screen
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Earnings - Coming Soon!')),
+                        SnackBar(content: Text(t.t('earnings_coming_soon'))),
                       );
                     },
                   ),
@@ -256,7 +261,7 @@ class HomeScreen extends StatelessWidget {
 
                 // Common Actions
                 Text(
-                  'More',
+                  t.t('more'),
                   style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -267,8 +272,8 @@ class HomeScreen extends StatelessWidget {
 
                 _buildActionCard(
                   context,
-                  'Messages',
-                  'Chat with other users',
+                  t.t('messages'),
+                  t.t('messages_desc'),
                   Icons.chat_bubble_outline,
                   Colors.indigo,
                   () {
@@ -281,17 +286,18 @@ class HomeScreen extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 12),
+                
                 _buildActionCard(
                   context,
-                  'Verification',
-                  'Verify your identity',
-                  Icons.verified_user,
+                  t.t('profile'),
+                  t.t('profile_desc'),
+                  Icons.person_outline,
                   Colors.teal,
                   () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const VerificationScreen(isVerified: false),
+                        builder: (context) => const ProfileScreen(),
                       ),
                     );
                   },
@@ -299,28 +305,16 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildActionCard(
                   context,
-                  'Profile',
-                  'Edit your profile',
-                  Icons.person_outline,
-                  Colors.teal,
-                  () {
-                    // TODO: Navigate to profile screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Profile - Coming Soon!')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildActionCard(
-                  context,
-                  'Settings',
-                  'App preferences',
+                  t.t('settings'),
+                  t.t('app_preferences'),
                   Icons.settings,
                   Colors.grey,
                   () {
-                    // TODO: Navigate to settings screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Settings - Coming Soon!')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
                     );
                   },
                 ),

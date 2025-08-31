@@ -11,7 +11,10 @@ import '../models/dog_model.dart';
 import '../models/message_model.dart';
 import 'chat_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../l10n/app_localizations.dart';
 
+/// 사용자가 참여 중인 채팅 목록을 구성하는 화면.
+/// - walk_requests/채팅 컬렉션을 조합해 최근 메시지 기준으로 정렬합니다.
 class ChatListScreen extends StatefulWidget {
   final String userId;
   const ChatListScreen({Key? key, required this.userId}) : super(key: key);
@@ -120,7 +123,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     } catch (e) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading chats: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context).t('err_loading_chats')}: $e')),
       );
     }
   }
@@ -284,7 +287,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (messageDate == today) {
       return '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     } else if (messageDate == yesterday) {
-      return 'Yesterday';
+      return AppLocalizations.of(context).t('yesterday');
     } else {
       return '${dateTime.day}/${dateTime.month}';
     }
@@ -292,9 +295,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chats'),
+        title: Text(t.t('chats')),
         backgroundColor: Colors.indigo[600],
         actions: [
           IconButton(
@@ -317,7 +321,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'No chats yet',
+                        t.t('no_chats_yet'),
                         style: TextStyle(
                           fontSize: 18,
                           color: Colors.grey[600],
@@ -326,7 +330,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Chats will appear when you start conversations\nabout walk requests',
+                        t.t('chats_hint'),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[500],
@@ -395,7 +399,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           children: [
                             const SizedBox(height: 4),
                             Text(
-                              'Walk at ${walkRequest.location}',
+                              '${t.t('walk_at')} ${walkRequest.location}',
                               style: TextStyle(
                                 color: Colors.grey[600],
                                 fontSize: 14,
@@ -404,7 +408,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             if (chat['dog'] != null) ...[
                               const SizedBox(height: 4),
                               Text(
-                                'Dog: ${(chat['dog'] as DogModel).name}',
+                                '${t.t('dog')}: ${(chat['dog'] as DogModel).name}',
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 13,

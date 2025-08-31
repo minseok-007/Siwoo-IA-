@@ -5,7 +5,10 @@ import '../services/walk_request_service.dart';
 import '../services/auth_provider.dart';
 import 'walk_request_form_screen.dart';
 import 'walk_request_detail_screen.dart';
+import '../l10n/app_localizations.dart';
 
+/// 산책 요청 목록 화면.
+/// - 워커/오너에 따라 탭/목록 구성을 달리하여 UX를 최적화합니다.
 class WalkRequestListScreen extends StatefulWidget {
   final bool isWalker;
   const WalkRequestListScreen({Key? key, required this.isWalker}) : super(key: key);
@@ -67,8 +70,9 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
       }
     } catch (e) {
       setState(() => _loading = false);
+      final t = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading requests: $e')),
+        SnackBar(content: Text('${t.t('err_loading_requests')}: $e')),
       );
     }
   }
@@ -115,9 +119,9 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${req.time.day}/${req.time.month}/${req.time.year} at ${req.time.hour}:${req.time.minute.toString().padLeft(2, '0')}'),
+            Text('${req.time.day}/${req.time.month}/${req.time.year} ${AppLocalizations.of(context).t('at')} ${req.time.hour}:${req.time.minute.toString().padLeft(2, '0')}'),
             Text(
-              'Status: ${req.status.toString().split(".").last.toUpperCase()}',
+              '${AppLocalizations.of(context).t('status')}: ${req.status.toString().split(".").last.toUpperCase()}',
               style: TextStyle(
                 color: _getStatusColor(req.status!),
                 fontWeight: FontWeight.bold,
@@ -146,16 +150,17 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     if (widget.isWalker) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Walk Requests'),
+          title: Text(t.t('walk_requests')),
           backgroundColor: Colors.green[600],
           bottom: TabBar(
             controller: _tabController,
-            tabs: const [
-              Tab(text: 'Available Walks'),
-              Tab(text: 'My Accepted Walks'),
+            tabs: [
+              Tab(text: t.t('available_walks')),
+              Tab(text: t.t('my_accepted_walks')),
             ],
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
@@ -177,7 +182,7 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
                 : _availableRequests.isEmpty
                     ? Center(
                         child: Text(
-                          'No available walk requests nearby.',
+                          t.t('no_available_walks'),
                           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                         ),
                       )
@@ -202,7 +207,7 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'No accepted walks yet',
+                              t.t('no_accepted_walks'),
                               style: TextStyle(
                                 fontSize: 18,
                                 color: Colors.grey[600],
@@ -211,7 +216,7 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Accept walk requests to see them here',
+                              t.t('accept_walks_hint'),
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[500],
@@ -232,7 +237,7 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
       // Owner view (unchanged)
       return Scaffold(
         appBar: AppBar(
-          title: const Text('My Walk Requests'),
+          title: Text(t.t('my_walk_requests')),
           backgroundColor: Colors.green[600],
           actions: [
             IconButton(
@@ -245,14 +250,14 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
           onPressed: _onAddRequest,
           backgroundColor: Colors.green[600],
           child: const Icon(Icons.add, color: Colors.white),
-          tooltip: 'Post Walk Request',
+          tooltip: t.t('post_walk_request'),
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _availableRequests.isEmpty
                 ? Center(
                     child: Text(
-                      'No walk requests posted yet. Tap + to post your first request!',
+                      t.t('no_walk_requests_yet'),
                       style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                     ),
                   )
@@ -264,4 +269,4 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
       );
     }
   }
-} 
+}

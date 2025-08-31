@@ -6,7 +6,10 @@ import '../services/auth_provider.dart';
 import '../utils/validators.dart';
 import 'login_screen.dart';
 import 'auth_wrapper.dart';
+import '../l10n/app_localizations.dart';
 
+/// 이메일/비밀번호 회원가입 화면.
+/// - 사용자 유형 선택(오너/워커)과 기본 개인정보를 수집합니다.
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -36,6 +39,8 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
+  /// 폼 검증 후 회원가입 요청을 수행합니다.
+  /// - 성공 시 AuthWrapper로 이동하여 인증 상태에 따른 라우팅을 위임합니다.
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -59,9 +64,10 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       );
     } else if (mounted) {
+      final t = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.error ?? 'Failed to create account'),
+          content: Text(authProvider.error ?? t.t('failed_to_create_account')),
           backgroundColor: Colors.red,
         ),
       );
@@ -70,8 +76,9 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -100,7 +107,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Connect with fellow dog lovers',
+                  t.t('connect_with_dog_lovers'),
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -111,7 +118,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                 // User Type Selection
                 Text(
-                  'I am a:',
+                  t.t('i_am_a'),
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -123,18 +130,18 @@ class _SignupScreenState extends State<SignupScreen> {
                     Expanded(
                       child: _buildUserTypeCard(
                         UserType.dogOwner,
-                        'Dog Owner',
+                        t.t('dog_owner'),
                         Icons.pets,
-                        'I have a dog and need walking help',
+                        t.t('owner_desc'),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildUserTypeCard(
                         UserType.dogWalker,
-                        'Dog Walker',
+                        t.t('dog_walker'),
                         Icons.directions_walk,
-                        'I want to walk dogs',
+                        t.t('walker_desc'),
                       ),
                     ),
                   ],
@@ -145,15 +152,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextFormField(
                   controller: _fullNameController,
                   decoration: InputDecoration(
-                    labelText: 'Full Name',
+                    labelText: t.t('full_name'),
                     prefixIcon: Icon(Icons.person),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
                   ),
-                  validator: Validators.validateFullName,
+                  validator: (v) => Validators.validateFullName(v, context),
                   textCapitalization: TextCapitalization.words,
                 ),
                 const SizedBox(height: 16),
@@ -162,15 +168,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextFormField(
                   controller: _emailController,
                   decoration: InputDecoration(
-                    labelText: 'Email',
+                    labelText: t.t('email'),
                     prefixIcon: Icon(Icons.email),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
                   ),
-                  validator: Validators.validateEmail,
+                  validator: (v) => Validators.validateEmail(v, context),
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 16),
@@ -179,15 +184,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextFormField(
                   controller: _phoneController,
                   decoration: InputDecoration(
-                    labelText: 'Phone Number',
+                    labelText: t.t('phone_number'),
                     prefixIcon: Icon(Icons.phone),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
                   ),
-                  validator: Validators.validatePhoneNumber,
+                  validator: (v) => Validators.validatePhoneNumber(v, context),
                   keyboardType: TextInputType.phone,
                 ),
                 const SizedBox(height: 16),
@@ -196,7 +200,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextFormField(
                   controller: _passwordController,
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: t.t('password'),
                     prefixIcon: Icon(Icons.lock),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -212,9 +216,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
                   ),
-                  validator: Validators.validatePassword,
+                  validator: (v) => Validators.validatePassword(v, context),
                   obscureText: _obscurePassword,
                 ),
                 const SizedBox(height: 16),
@@ -223,7 +226,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextFormField(
                   controller: _confirmPasswordController,
                   decoration: InputDecoration(
-                    labelText: 'Confirm Password',
+                    labelText: t.t('confirm_password'),
                     prefixIcon: Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -239,12 +242,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
                   ),
-                  validator: (value) => Validators.validateConfirmPassword(
-                    value,
-                    _passwordController.text,
-                  ),
+                  validator: (value) => Validators.validateConfirmPassword(value, _passwordController.text, context),
                   obscureText: _obscureConfirmPassword,
                 ),
                 const SizedBox(height: 32),
@@ -273,7 +272,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                             )
                           : Text(
-                              'Create Account',
+                              t.t('create_account'),
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -289,7 +288,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Already have an account? ',
+                      t.t('already_have_account'),
                       style: GoogleFonts.poppins(
                         color: Colors.grey[600],
                       ),
@@ -304,7 +303,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         );
                       },
                       child: Text(
-                        'Sign In',
+                        t.t('sign_in'),
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.w600,
                           color: Colors.blue[600],
@@ -338,7 +337,7 @@ class _SignupScreenState extends State<SignupScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue[50] : Colors.white,
+          color: isSelected ? Colors.blue[50] : Theme.of(context).cardColor,
           border: Border.all(
             color: isSelected ? Colors.blue[600]! : Colors.grey[300]!,
             width: isSelected ? 2 : 1,

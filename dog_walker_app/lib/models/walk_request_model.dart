@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// 산책 요청 상태. 상태 머신을 단순화하기 위해 명확한 단계만 유지합니다.
 enum WalkRequestStatus { pending, accepted, completed, cancelled }
 
+/// 산책 요청 도메인 모델.
+/// - 생성/업데이트 시간은 DateTime으로 관리하고, 저장 시 Timestamp로 변환합니다.
 class WalkRequestModel {
   final String id;
   final String ownerId;
@@ -11,8 +14,8 @@ class WalkRequestModel {
   final String location;
   final String? notes;
   final WalkRequestStatus status;
-  final int duration; // in minutes
-  final double? budget; // in dollars
+  final int duration; // 분 단위. UI에서만 시간/분 변환
+  final double? budget; // 예산(통화 단위는 UI에서 표현)
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -31,6 +34,8 @@ class WalkRequestModel {
     required this.updatedAt,
   });
 
+  /// Firestore → WalkRequestModel 변환.
+  /// - 널/타입 이슈에 방어적으로 대응합니다.
   factory WalkRequestModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return WalkRequestModel(
@@ -52,6 +57,8 @@ class WalkRequestModel {
     );
   }
 
+  /// WalkRequestModel → Firestore 저장 Map.
+  /// - enum은 슬러그 저장, DateTime은 Timestamp 저장으로 일관성을 유지합니다.
   Map<String, dynamic> toFirestore() {
     return {
       'ownerId': ownerId,
@@ -68,6 +75,7 @@ class WalkRequestModel {
     };
   }
 
+  /// 불변 모델을 위한 copyWith. 선택 필드만 변경 가능합니다.
   WalkRequestModel copyWith({
     String? id,
     String? ownerId,

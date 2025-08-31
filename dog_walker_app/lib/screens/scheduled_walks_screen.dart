@@ -6,7 +6,10 @@ import '../services/walk_request_service.dart';
 import '../services/auth_provider.dart';
 import '../services/user_service.dart';
 import 'chat_screen.dart';
+import '../l10n/app_localizations.dart';
 
+/// 워커 관점의 스케줄 화면.
+/// - 수락/완료된 산책을 목록으로 보여주고, 오너와의 채팅으로 연결합니다.
 class ScheduledWalksScreen extends StatefulWidget {
   const ScheduledWalksScreen({Key? key}) : super(key: key);
 
@@ -43,7 +46,7 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
     } catch (e) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading scheduled walks: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context).t('err_loading_scheduled')}: $e')),
       );
     }
   }
@@ -53,7 +56,7 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
       final owner = await _userService.getUserById(walk.ownerId);
       if (owner == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not find dog owner information')),
+          SnackBar(content: Text(AppLocalizations.of(context).t('owner_not_found'))),
         );
         return;
       }
@@ -74,13 +77,13 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error starting chat: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context).t('err_start_chat')}: $e')),
       );
     }
   }
 
   String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${AppLocalizations.of(context).t('at')} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
   Color _getStatusColor(WalkRequestStatus status) {
@@ -96,9 +99,10 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Scheduled Walks'),
+        title: Text(t.t('my_scheduled_walks')),
         backgroundColor: Colors.blue[600],
         actions: [
           IconButton(
@@ -121,7 +125,7 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'No scheduled walks yet',
+                        t.t('no_scheduled_walks'),
                         style: TextStyle(
                           fontSize: 18,
                           color: Colors.grey[600],
@@ -130,7 +134,7 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Accept walk requests to see them here',
+                        t.t('accept_walks_hint'),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[500],
@@ -208,7 +212,7 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
                             if (walk.notes != null && walk.notes!.isNotEmpty) ...[
                               const SizedBox(height: 12),
                               Text(
-                                'Notes: ${walk.notes}',
+                                '${t.t('notes')}: ${walk.notes}',
                                 style: TextStyle(
                                   color: Colors.grey[700],
                                   fontSize: 14,
@@ -222,7 +226,7 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
                                   child: ElevatedButton.icon(
                                     onPressed: () => _startChat(walk),
                                     icon: const Icon(Icons.chat_bubble_outline),
-                                    label: const Text('Chat with Owner'),
+                                    label: Text(t.t('chat_with_owner')),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.indigo[600],
                                       foregroundColor: Colors.white,
@@ -237,13 +241,11 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
                                       onPressed: () {
                                         // TODO: Implement mark as completed functionality
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Mark as completed - Coming Soon!'),
-                                          ),
+                                          SnackBar(content: Text(t.t('mark_completed_coming_soon'))),
                                         );
                                       },
                                       icon: const Icon(Icons.check_circle_outline),
-                                      label: const Text('Mark Complete'),
+                                      label: Text(t.t('mark_complete')),
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: Colors.green[600],
                                         side: BorderSide(color: Colors.green[600]!),

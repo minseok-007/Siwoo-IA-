@@ -1,11 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// 사용자 유형을 구분 (도그 오너/도그 워커).
 enum UserType { dogOwner, dogWalker }
 
+/// 강아지 크기: 매칭/필터에 사용.
 enum DogSize { small, medium, large }
 
+/// 워커 경험 수준: 매칭 가중치에 반영.
 enum ExperienceLevel { beginner, intermediate, expert }
 
+/// 사용자 도메인 모델.
+/// - Firestore 연동을 고려해 DateTime/GeoPoint 등 적절한 타입을 선택했습니다.
+/// - final로 불변성을 유지하여 상태 관리 시 예측 가능성을 확보합니다.
 class UserModel {
   final String id;
   final String email;
@@ -16,18 +22,18 @@ class UserModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   
-  // Advanced matching preferences
-  final GeoPoint? location; // Firestore GeoPoint
-  final List<DogSize> preferredDogSizes; // For walkers
-  final List<DogSize> dogSizes; // For owners (their dogs' sizes)
-  final ExperienceLevel experienceLevel; // For walkers
-  final double hourlyRate; // For walkers
-  final List<String> preferredTimeSlots; // e.g., ["morning", "afternoon", "evening"]
-  final List<int> availableDays; // 0=Sunday, 1=Monday, etc.
-  final double maxDistance; // Maximum distance willing to travel (km)
-  final double rating; // Average rating
-  final int totalWalks; // Total walks completed
-  final List<String> specializations; // e.g., ["puppy", "senior", "reactive"]
+  // 매칭 및 추천 품질을 위한 확장 속성들
+  final GeoPoint? location; // Firestore GeoPoint 사용: 위경도 연산/저장에 최적화
+  final List<DogSize> preferredDogSizes; // 워커가 선호하는 강아지 크기
+  final List<DogSize> dogSizes; // 오너(보유 강아지)의 크기 목록
+  final ExperienceLevel experienceLevel; // 워커의 경험 수준
+  final double hourlyRate; // 워커의 시급 (원/달러 등 단위는 UI에서 표시)
+  final List<String> preferredTimeSlots; // 예: ["morning", "afternoon", "evening"]
+  final List<int> availableDays; // 0=Sun, 1=Mon ... 요일 인덱스
+  final double maxDistance; // 이동 가능 최대 거리(km)
+  final double rating; // 평균 평점 (0~5)
+  final int totalWalks; // 총 산책 수 (신뢰도 지표)
+  final List<String> specializations; // 특화 분야(퍼피/시니어/리액티브 등)
 
   UserModel({
     required this.id,
@@ -51,6 +57,8 @@ class UserModel {
     this.specializations = const [],
   });
 
+  /// Firestore 문서 → UserModel 변환 로직.
+  /// - enum 복원, 리스트 캐스팅, 숫자(Double) 안전 변환을 처리합니다.
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return UserModel(
@@ -92,6 +100,9 @@ class UserModel {
     );
   }
 
+  /// UserModel → Firestore 저장 Map.
+  /// - enum은 슬러그만 저장하여 쿼리 및 가독성을 높입니다.
+  /// - DateTime은 Timestamp로 변환합니다.
   Map<String, dynamic> toFirestore() {
     return {
       'email': email,
@@ -115,6 +126,7 @@ class UserModel {
     };
   }
 
+  /// copyWith 패턴으로 부분 업데이트를 간결하게 지원합니다.
   UserModel copyWith({
     String? id,
     String? email,

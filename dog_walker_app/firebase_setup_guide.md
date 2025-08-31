@@ -68,6 +68,46 @@ cd ios && pod install && cd ..
 ## Test the Setup
 Run the app and try to sign up - if it works, Firebase is connected!
 
+## Web Setup (Flutter Web)
+
+Flutter Web requires explicit Firebase config at runtime. Provide these via `--dart-define` when running or building:
+
+- FIREBASE_API_KEY
+- FIREBASE_APP_ID
+- FIREBASE_MESSAGING_SENDER_ID
+- FIREBASE_PROJECT_ID
+- FIREBASE_AUTH_DOMAIN (optional but recommended)
+- FIREBASE_STORAGE_BUCKET (optional)
+- FIREBASE_MEASUREMENT_ID (optional)
+
+Example run command:
+
+```bash
+flutter run -d chrome \
+  --dart-define=FIREBASE_API_KEY=YOUR_API_KEY \
+  --dart-define=FIREBASE_APP_ID=1:XXXXXXXX:web:YYYYYYYY \
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID=XXXXXXXX \
+  --dart-define=FIREBASE_PROJECT_ID=your-project-id \
+  --dart-define=FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com \
+  --dart-define=FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com \
+  --dart-define=FIREBASE_MEASUREMENT_ID=G-XXXXXXXX
+```
+
+For production builds:
+
+```bash
+flutter build web \
+  --dart-define=FIREBASE_API_KEY=... \
+  --dart-define=FIREBASE_APP_ID=... \
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID=... \
+  --dart-define=FIREBASE_PROJECT_ID=... \
+  --dart-define=FIREBASE_AUTH_DOMAIN=... \
+  --dart-define=FIREBASE_STORAGE_BUCKET=... \
+  --dart-define=FIREBASE_MEASUREMENT_ID=...
+```
+
+Tip: Alternatively, you can run `flutterfire configure` to generate `lib/firebase_options.dart` and replace the web initialization with `DefaultFirebaseOptions.currentPlatform`. The current setup uses `--dart-define` to avoid committing secrets.
+
 ## Security Rules (Optional)
 In Firestore Console → Rules:
 ```javascript

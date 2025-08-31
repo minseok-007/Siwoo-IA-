@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 
+/// 인증 및 사용자 저장소 접근을 담당하는 Service 레이어.
+/// - Firebase SDK 의존성을 한 곳에 모아 UI/Provider와 분리합니다.
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

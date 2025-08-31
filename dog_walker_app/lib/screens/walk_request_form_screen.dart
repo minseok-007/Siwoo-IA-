@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/walk_request_model.dart';
 import '../services/walk_request_service.dart';
+import '../l10n/app_localizations.dart';
 
+/// 산책 요청 생성/수정 폼 화면.
+/// - 날짜/시간 피커, 위치, 메모 등 핵심 정보를 입력 받습니다.
 class WalkRequestFormScreen extends StatefulWidget {
   final String ownerId;
   final WalkRequestModel? request;
@@ -86,9 +89,10 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.request != null;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit Walk Request' : 'Post Walk Request'),
+        title: Text(isEdit ? t.t('edit_walk_request') : t.t('post_walk_request')),
         backgroundColor: Colors.green[600],
       ),
       body: Padding(
@@ -99,18 +103,16 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
             children: [
               TextFormField(
                 controller: _locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Location',
-                  prefixIcon: Icon(Icons.location_on),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.t('location'),
+                  prefixIcon: const Icon(Icons.location_on),
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Location required' : null,
+                validator: (v) => v == null || v.trim().isEmpty ? t.t('location_required') : null,
               ),
               const SizedBox(height: 16),
               ListTile(
-                title: Text(_selectedTime == null
-                    ? 'Select Date & Time'
-                    : _selectedTime.toString()),
+                title: Text(_selectedTime == null ? t.t('select_date_time') : _selectedTime.toString()),
                 leading: const Icon(Icons.access_time),
                 trailing: IconButton(
                   icon: const Icon(Icons.edit),
@@ -121,10 +123,10 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                  prefixIcon: Icon(Icons.note),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.t('notes_optional'),
+                  prefixIcon: const Icon(Icons.note),
+                  border: const OutlineInputBorder(),
                 ),
                 maxLines: 2,
               ),
@@ -138,7 +140,7 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.save),
-                label: Text(isEdit ? 'Save Changes' : 'Post Request'),
+                label: Text(isEdit ? t.t('save_changes') : t.t('post_request')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[600],
                   foregroundColor: Colors.white,

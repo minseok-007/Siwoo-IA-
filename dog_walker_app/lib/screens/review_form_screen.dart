@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
+import '../l10n/app_localizations.dart';
 
+/// 리뷰 작성 화면.
+/// - 산책 완료 후 상대방에 대한 평점/코멘트를 수집합니다.
 class ReviewFormScreen extends StatefulWidget {
   final String reviewerId;
   final String revieweeId;
@@ -37,9 +40,10 @@ class _ReviewFormScreenState extends State<ReviewFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Leave a Review'),
+        title: Text(t.t('leave_a_review')),
         backgroundColor: Colors.amber[700],
       ),
       body: Padding(
@@ -48,7 +52,7 @@ class _ReviewFormScreenState extends State<ReviewFormScreen> {
           key: _formKey,
           child: Column(
             children: [
-              Text('Rate your experience:', style: TextStyle(fontSize: 18, color: Colors.amber[900])),
+              Text(t.t('rate_your_experience'), style: TextStyle(fontSize: 18, color: Colors.amber[900])),
               Slider(
                 value: _rating,
                 min: 1,
@@ -59,13 +63,13 @@ class _ReviewFormScreenState extends State<ReviewFormScreen> {
               ),
               TextFormField(
                 controller: _commentController,
-                decoration: const InputDecoration(
-                  labelText: 'Comment',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.comment),
+                decoration: InputDecoration(
+                  labelText: t.t('comment'),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.comment),
                 ),
                 maxLines: 3,
-                validator: (v) => v == null || v.trim().isEmpty ? 'Comment required' : null,
+                validator: (v) => v == null || v.trim().isEmpty ? t.t('comment_required') : null,
               ),
               const SizedBox(height: 32),
               ElevatedButton.icon(
@@ -77,7 +81,7 @@ class _ReviewFormScreenState extends State<ReviewFormScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.save),
-                label: const Text('Submit Review'),
+                label: Text(t.t('submit_review')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber[700],
                   foregroundColor: Colors.white,

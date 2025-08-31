@@ -4,12 +4,12 @@ import '../models/user_model.dart';
 import '../models/dog_model.dart';
 import '../models/walk_request_model.dart';
 
-/// Advanced matching service that uses multiple algorithms to find compatible
-/// walkers for dog owners and vice versa.
+/// 다중 요인을 가중합으로 평가하는 매칭 서비스.
+/// - 거리/크기/스케줄/경험/평점/가격 등을 점수화하여 종합 점수를 산출합니다.
 class MatchingService {
   static const double _earthRadius = 6371.0; // Earth's radius in kilometers
   
-  // Weighted scoring system for different matching factors
+  // 가중치 테이블: 비즈니스 요구에 따라 조정 가능
   static const Map<String, double> _matchingWeights = {
     'distance': 0.25,        // 25% - Geographic proximity
     'dogSize': 0.20,         // 20% - Dog size compatibility
@@ -19,8 +19,8 @@ class MatchingService {
     'price': 0.10,           // 10% - Price compatibility
   };
 
-  /// Calculate distance between two geographic points using Haversine formula
-  /// Time Complexity: O(1) - Constant time calculation
+  /// Haversine 공식을 사용한 두 지점 간 거리(km) 계산
+  /// Time Complexity: O(1)
   static double calculateDistance(GeoPoint point1, GeoPoint point2) {
     final double lat1 = point1.latitude * pi / 180;
     final double lat2 = point2.latitude * pi / 180;
@@ -34,8 +34,8 @@ class MatchingService {
     return _earthRadius * c;
   }
 
-  /// Calculate distance score (0-1, where 1 is closest)
-  /// Uses inverse exponential decay for smooth distance scoring
+  /// 거리 점수 (0~1). 가까울수록 높은 점수.
+  /// 역지수 감쇠로 급격한 점수 하락을 방지합니다.
   static double calculateDistanceScore(double distance, double maxDistance) {
     if (distance <= 0) return 1.0;
     if (distance >= maxDistance) return 0.0;
@@ -44,8 +44,8 @@ class MatchingService {
     return exp(-distance / (maxDistance * 0.3));
   }
 
-  /// Calculate dog size compatibility score
-  /// Time Complexity: O(n) where n is the number of preferred dog sizes
+  /// 강아지 크기 호환성 점수.
+  /// Time Complexity: O(n) (선호 크기 개수 n)
   static double calculateDogSizeScore(List<DogSize> walkerPreferences, DogSize dogSize) {
     if (walkerPreferences.isEmpty) return 0.5; // Neutral score if no preferences
     
@@ -76,8 +76,8 @@ class MatchingService {
     return bestScore;
   }
 
-  /// Calculate schedule compatibility score
-  /// Time Complexity: O(n*m) where n is available days and m is preferred time slots
+  /// 스케줄 호환성 점수.
+  /// Time Complexity: O(n*m) (요일×타임슬롯)
   static double calculateScheduleScore(List<int> walkerAvailableDays, List<String> walkerTimeSlots, 
                                      DateTime walkTime, List<String> ownerTimeSlots) {
     if (walkerAvailableDays.isEmpty || walkerTimeSlots.isEmpty) return 0.0;
@@ -104,8 +104,8 @@ class MatchingService {
     return 0.5; // Neutral score
   }
 
-  /// Calculate experience compatibility score
-  /// Time Complexity: O(1) - Constant time calculation
+  /// 경험-난이도 매칭 점수.
+  /// Time Complexity: O(1)
   static double calculateExperienceScore(ExperienceLevel walkerLevel, DogModel dog) {
     // Map experience levels to numeric values
     final experienceMap = {
@@ -132,13 +132,13 @@ class MatchingService {
     return 0.3;                                             // Under-experienced
   }
 
-  /// Calculate rating score (0-1, where 1 is highest rating)
+  /// 평점 점수 (0~1)
   static double calculateRatingScore(double rating) {
     return (rating / 5.0).clamp(0.0, 1.0);
   }
 
-  /// Calculate price compatibility score
-  /// Time Complexity: O(1) - Constant time calculation
+  /// 가격 호환성 점수.
+  /// Time Complexity: O(1)
   static double calculatePriceScore(double walkerRate, double ownerBudget, double walkDuration) {
     final totalCost = walkerRate * walkDuration;
     
@@ -148,9 +148,9 @@ class MatchingService {
     return 0.0;                                          // Way over budget
   }
 
-  /// Main matching algorithm using weighted scoring
-  /// Time Complexity: O(n*m*k) where n=walkers, m=owners, k=matching factors
-  /// Space Complexity: O(n) for storing match scores
+  /// 메인 매칭 알고리즘: 가중합 기반.
+  /// Time Complexity: O(n) (워커 수 n, 각 항목은 O(1) 계산)
+  /// Space Complexity: O(n)
   static List<MatchResult> findCompatibleMatches(
     List<UserModel> walkers,
     WalkRequestModel walkRequest,
@@ -184,8 +184,8 @@ class MatchingService {
     return matches.take(maxResults).toList();
   }
 
-  /// Calculate overall match score using weighted factors
-  /// Time Complexity: O(1) - Constant time calculation
+  /// 각 요인 점수의 가중합으로 전체 점수를 계산합니다.
+  /// Time Complexity: O(1)
   static double _calculateOverallMatchScore(
     UserModel walker,
     WalkRequestModel walkRequest,
@@ -230,7 +230,7 @@ class MatchingService {
     return totalScore / totalWeight;
   }
 
-  /// Get detailed score breakdown for debugging and transparency
+  /// 디버깅/설명용 세부 점수 분해를 제공합니다.
   static Map<String, double> _getScoreBreakdown(
     UserModel walker,
     WalkRequestModel walkRequest,
@@ -256,10 +256,9 @@ class MatchingService {
     };
   }
 
-  /// Alternative matching algorithm using Hungarian Algorithm for optimal 1:1 matching
-  /// This is useful when you need to assign exactly one walker to each walk request
-  /// Time Complexity: O(n³) where n is the number of walkers/requests
-  /// Space Complexity: O(n²) for the cost matrix
+  /// 대안: Hungarian 기반의 최적 1:1 매칭(간소화 버전).
+  /// - 소규모 데이터셋에서 배타적 매칭이 필요할 때 유용합니다.
+  /// Time: O(n³), Space: O(n²)
   static List<MatchResult> findOptimalMatches(
     List<UserModel> walkers,
     List<WalkRequestModel> walkRequests,
@@ -319,8 +318,7 @@ class MatchingService {
     return results;
   }
 
-  /// Simplified Hungarian Algorithm implementation
-  /// This is a basic version - for production, consider using a more robust library
+  /// 간소화된 Hungarian 알고리즘(데모용). 프로덕션에서는 검증된 라이브러리 권장.
   static List<int> _hungarianAlgorithm(List<List<double>> costMatrix) {
     final int n = costMatrix.length;
     final List<int> assignment = List.generate(n, (i) => i);

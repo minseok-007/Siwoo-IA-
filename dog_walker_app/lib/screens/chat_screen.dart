@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../services/message_service.dart';
 import '../models/message_model.dart';
 import '../models/walk_request_model.dart';
+import '../l10n/app_localizations.dart';
 
+/// 1:1 채팅 화면. 주어진 `chatId` 기준으로 메시지를 스트리밍합니다.
+/// - 별도 메시지 서브컬렉션(messages)을 사용하여 무한 스크롤/정렬이 효율적입니다.
 class ChatScreen extends StatefulWidget {
   final String chatId;
   final String userId;
@@ -64,6 +67,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  /// 입력 메시지를 생성/저장하고, 전송 후 스크롤을 하단으로 이동합니다.
   void _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
@@ -92,7 +96,7 @@ class _ChatScreenState extends State<ChatScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send message: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context).t('err_send_message')}: $e')),
       );
     }
   }
@@ -103,18 +107,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.otherUserName ?? 'Chat',
+              widget.otherUserName ?? t.t('chat'),
               style: const TextStyle(fontSize: 18),
             ),
             if (widget.walkRequest != null)
               Text(
-                'Walk at ${widget.walkRequest!.location}',
+                '${t.t('walk_at')} ${widget.walkRequest!.location}',
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
               ),
           ],
@@ -144,7 +149,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Walk Request',
+                          t.t('walk_request'),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.indigo[800],
@@ -199,7 +204,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Error loading messages',
+                                t.t('err_loading_messages'),
                                 style: TextStyle(
                                   fontSize: 18,
                                   color: Colors.red[600],
@@ -237,7 +242,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No messages yet',
+                                t.t('no_messages_yet'),
                                 style: TextStyle(
                                   fontSize: 18,
                                   color: Colors.grey[600],
@@ -246,7 +251,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Start the conversation!',
+                                t.t('start_the_conversation'),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey[500],
@@ -336,7 +341,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: TextField(
                     controller: _controller,
                     decoration: InputDecoration(
-                      hintText: 'Type a message...',
+                      hintText: t.t('type_a_message'),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide(color: Colors.grey[300]!),
@@ -396,9 +401,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final messageDate = DateTime(date.year, date.month, date.day);
     
     if (messageDate == today) {
-      return 'Today';
+      return AppLocalizations.of(context).t('today');
     } else if (messageDate == yesterday) {
-      return 'Yesterday';
+      return AppLocalizations.of(context).t('yesterday');
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }

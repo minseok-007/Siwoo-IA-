@@ -6,7 +6,10 @@ import '../utils/validators.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
 import 'auth_wrapper.dart';
+import '../l10n/app_localizations.dart';
 
+/// 이메일/비밀번호 로그인 화면.
+/// - Provider를 통해 AuthProvider를 호출하고 결과에 따라 내비게이션합니다.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -27,6 +30,8 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  /// 폼 검증 후 로그인 요청을 수행합니다.
+  /// - 상태/에러는 AuthProvider가 관리하고, UI는 SnackBar로 피드백합니다.
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -47,20 +52,23 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } else if (mounted) {
+      final t = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.error ?? 'Failed to sign in'),
+          content: Text(authProvider.error ?? t.t('failed_to_sign_in')),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
+  /// 비밀번호 재설정(샘플 구현). 이메일이 없을 때는 토스트를 먼저 안내합니다.
   Future<void> _resetPassword() async {
     if (_emailController.text.trim().isEmpty) {
+      final t = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your email address first'),
+        SnackBar(
+          content: Text(t.t('enter_email_first')),
           backgroundColor: Colors.orange,
         ),
       );
@@ -72,11 +80,10 @@ class _LoginScreenState extends State<LoginScreen> {
     await authProvider.resetPassword(_emailController.text.trim());
     
     if (mounted) {
+      final t = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            authProvider.error ?? 'Password reset email sent! Check your inbox.',
-          ),
+          content: Text(authProvider.error ?? t.t('password_reset_sent')),
           backgroundColor: authProvider.error != null ? Colors.red : Colors.green,
         ),
       );
@@ -85,8 +92,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -115,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Welcome back!',
+                  t.t('welcome_back'),
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -128,15 +136,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _emailController,
                   decoration: InputDecoration(
-                    labelText: 'Email',
+                    labelText: t.t('email'),
                     prefixIcon: Icon(Icons.email),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
                   ),
-                  validator: Validators.validateEmail,
+                  validator: (v) => Validators.validateEmail(v, context),
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 16),
@@ -145,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _passwordController,
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: t.t('password'),
                     prefixIcon: Icon(Icons.lock),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -161,9 +168,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
                   ),
-                  validator: Validators.validatePassword,
+                  validator: (v) => Validators.validatePassword(v, context),
                   obscureText: _obscurePassword,
                 ),
                 const SizedBox(height: 8),
@@ -174,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: TextButton(
                     onPressed: _resetPassword,
                     child: Text(
-                      'Forgot Password?',
+                      t.t('forgot_password'),
                       style: GoogleFonts.poppins(
                         color: Colors.blue[600],
                         fontSize: 14,
@@ -208,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             )
                           : Text(
-                              'Sign In',
+                              t.t('sign_in'),
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -226,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        'OR',
+                        t.t('or'),
                         style: GoogleFonts.poppins(
                           color: Colors.grey[600],
                           fontSize: 14,
@@ -243,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Don\'t have an account? ',
+                      t.t('dont_have_account'),
                       style: GoogleFonts.poppins(
                         color: Colors.grey[600],
                       ),
@@ -258,7 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                       },
                       child: Text(
-                        'Sign Up',
+                        t.t('sign_up'),
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.w600,
                           color: Colors.blue[600],
@@ -274,4 +280,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-} 
+}

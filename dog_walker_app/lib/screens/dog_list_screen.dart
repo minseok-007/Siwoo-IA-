@@ -4,7 +4,10 @@ import '../models/dog_model.dart';
 import '../services/dog_service.dart';
 import '../services/auth_provider.dart';
 import 'edit_dog_screen.dart';
+import '../l10n/app_localizations.dart';
 
+/// 사용자의 강아지 목록 화면.
+/// - Firestore에서 소유자 기준으로 강아지를 조회/수정/삭제합니다.
 class DogListScreen extends StatefulWidget {
   const DogListScreen({Key? key}) : super(key: key);
 
@@ -61,16 +64,16 @@ class _DogListScreenState extends State<DogListScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Dog'),
-        content: Text('Are you sure you want to delete ${dog.name}?'),
+        title: Text(AppLocalizations.of(context).t('delete_dog')),
+        content: Text(AppLocalizations.of(context).t('delete_dog_confirm').replaceFirst('%s', dog.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).t('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(AppLocalizations.of(context).t('delete'), style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -83,9 +86,10 @@ class _DogListScreenState extends State<DogListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Dogs'),
+        title: Text(t.t('my_dogs')),
         backgroundColor: Colors.blue[600],
         actions: [
           IconButton(
@@ -98,14 +102,14 @@ class _DogListScreenState extends State<DogListScreen> {
         onPressed: _onAddDog,
         backgroundColor: Colors.blue[600],
         child: const Icon(Icons.add, color: Colors.white),
-        tooltip: 'Add Dog',
+        tooltip: t.t('add_dog'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _dogs.isEmpty
               ? Center(
                   child: Text(
-                    'No dogs added yet. Tap + to add your first dog!',
+                    t.t('no_dogs_yet'),
                     style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                   ),
                 )
@@ -135,19 +139,19 @@ class _DogListScreenState extends State<DogListScreen> {
                           dog.name,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                         ),
-                        subtitle: Text('${dog.breed} • ${dog.age} years old'),
+                        subtitle: Text('${dog.breed} • ${dog.age} ${t.t('years_old')}'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
                               onPressed: () => _onEditDog(dog),
-                              tooltip: 'Edit',
+                              tooltip: t.t('edit'),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () => _onDeleteDog(dog),
-                              tooltip: 'Delete',
+                              tooltip: t.t('delete'),
                             ),
                           ],
                         ),

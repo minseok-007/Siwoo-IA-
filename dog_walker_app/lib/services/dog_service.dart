@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/dog_model.dart';
 
+/// 강아지 컬렉션에 대한 CRUD 전용 서비스.
+/// - Firestore 접근 로직을 캡슐화하여 상위 레이어(UI/Provider)가 단순해집니다.
 class DogService {
   final CollectionReference dogsCollection = FirebaseFirestore.instance.collection('dogs');
 

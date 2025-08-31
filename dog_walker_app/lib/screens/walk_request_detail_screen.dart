@@ -5,7 +5,10 @@ import '../services/walk_request_service.dart';
 import '../services/auth_provider.dart';
 import '../services/user_service.dart';
 import 'chat_screen.dart';
+import '../l10n/app_localizations.dart';
 
+/// 산책 요청 상세 화면.
+/// - 워커는 수락, 오너는 취소/재조정 등 역할 기반 액션을 제공합니다.
 class WalkRequestDetailScreen extends StatefulWidget {
   final WalkRequestModel request;
   final bool isWalker;
@@ -34,7 +37,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     if (user == null) {
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not authenticated')),
+        SnackBar(content: Text(AppLocalizations.of(context).t('user_not_authenticated'))),
       );
       return;
     }
@@ -53,7 +56,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     } catch (e) {
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error accepting request: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context).t('err_accept_request')}: $e')),
       );
     }
   }
@@ -71,7 +74,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     } catch (e) {
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error cancelling request: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context).t('err_cancel_request')}: $e')),
       );
     }
   }
@@ -79,7 +82,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
   Future<void> _rescheduleRequest() async {
     // TODO: Implement rescheduling logic
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Rescheduling not implemented yet.')),
+      SnackBar(content: Text(AppLocalizations.of(context).t('reschedule_not_implemented'))),
     );
   }
 
@@ -95,7 +98,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
       final otherUser = await _userService.getUserById(otherUserId);
       if (otherUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not find user information')),
+          SnackBar(content: Text(AppLocalizations.of(context).t('user_not_found'))),
         );
         return;
       }
@@ -119,16 +122,17 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error starting chat: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context).t('err_start_chat')}: $e')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Walk Request Details'),
+        title: Text(t.t('walk_request_details')),
         backgroundColor: Colors.green[600],
       ),
       body: Padding(
@@ -136,13 +140,13 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Location: ${_request.location}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('${t.t('location')}: ${_request.location}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text('Time: ${_request.time}', style: const TextStyle(fontSize: 16)),
+            Text('${t.t('time')}: ${_request.time}', style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 8),
-            Text('Notes: ${_request.notes ?? "-"}', style: const TextStyle(fontSize: 16)),
+            Text('${t.t('notes')}: ${_request.notes ?? "-"}', style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 8),
-            Text('Status: ${_request.status.toString().split(".").last}', style: const TextStyle(fontSize: 16)),
+            Text('${t.t('status')}: ${_request.status.toString().split(".").last}', style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 24),
             if (_processing) const Center(child: CircularProgressIndicator()),
             if (!_processing)
@@ -156,7 +160,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                           child: ElevatedButton(
                             onPressed: _acceptRequest,
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.green[600]),
-                            child: const Text('Accept'),
+                            child: Text(t.t('accept')),
                           ),
                         ),
                       if (!widget.isWalker && _request.status == WalkRequestStatus.pending)
@@ -164,7 +168,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                           child: ElevatedButton(
                             onPressed: _cancelRequest,
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.red[600]),
-                            child: const Text('Cancel'),
+                            child: Text(t.t('cancel')),
                           ),
                         ),
                       if (!widget.isWalker && _request.status == WalkRequestStatus.accepted)
@@ -172,7 +176,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                           child: ElevatedButton(
                             onPressed: _rescheduleRequest,
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[600]),
-                            child: const Text('Reschedule'),
+                            child: Text(t.t('reschedule')),
                           ),
                         ),
                     ],
@@ -186,7 +190,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _startChat,
                         icon: const Icon(Icons.chat_bubble_outline),
-                        label: Text(widget.isWalker ? 'Chat with Owner' : 'Chat with Walker'),
+                        label: Text(widget.isWalker ? t.t('chat_with_owner') : t.t('chat_with_walker')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.indigo[600],
                           padding: const EdgeInsets.symmetric(vertical: 12),

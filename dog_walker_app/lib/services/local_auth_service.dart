@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
+/// Firebase 없이 로컬에서만 동작하는 간이 인증 서비스.
+/// - 샘플/오프라인 시나리오 용도이며, 비밀번호 평문 저장 등 보안상 취약합니다.
+/// - 실제 서비스에서는 FirebaseAuth 등 안전한 인증 수단을 사용하세요.
 class LocalAuthService {
   static const String _usersKey = 'users';
   static const String _currentUserKey = 'current_user';

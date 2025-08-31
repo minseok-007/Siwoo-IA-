@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 
+/// 사용자(users) 컬렉션 접근용 서비스.
+/// - GeoPoint를 활용한 근사 거리 계산 등 단순 비즈니스 로직도 함께 포함합니다.
 class UserService {
   final CollectionReference usersCollection = FirebaseFirestore.instance.collection('users');
 
@@ -45,7 +47,7 @@ class UserService {
     }
   }
 
-  /// Get all available dog walkers for matching
+  /// 매칭을 위한 워커 전체 조회 (간단 필터 포함)
   Future<List<UserModel>> getAllWalkers() async {
     try {
       final QuerySnapshot querySnapshot = await usersCollection
@@ -63,7 +65,7 @@ class UserService {
     }
   }
 
-  /// Get walkers within a specific area (for location-based matching)
+  /// 특정 반경 내 워커 조회 (개발용 근사 구현).
   Future<List<UserModel>> getWalkersInArea(GeoPoint center, double radiusKm) async {
     try {
       // Note: This is a simplified approach. For production, consider using
@@ -91,7 +93,7 @@ class UserService {
     }
   }
 
-  /// Simple distance calculation (Haversine formula)
+  /// 거리 계산 (Haversine 공식). 서버 인덱스 없이 클라이언트에서 근사 필터링 시 사용합니다.
   double _calculateDistance(GeoPoint point1, GeoPoint point2) {
     const double earthRadius = 6371.0; // Earth's radius in kilometers
     

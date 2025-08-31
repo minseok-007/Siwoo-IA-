@@ -4,6 +4,8 @@ import '../services/auth_provider.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 
+/// 인증 상태에 따라 초기 라우트를 분기하는 위젯.
+/// - 스플래시/로딩 → 로그인/홈으로 자연스럽게 전환합니다.
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -13,7 +15,7 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, authProvider, child) {
         if (authProvider.isLoading) {
           return Scaffold(
-            backgroundColor: Colors.grey[50],
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/dog_model.dart';
 import '../services/dog_service.dart';
+import '../l10n/app_localizations.dart';
 
+/// 강아지 프로필 추가/수정 화면.
+/// - 동일 화면에서 생성/수정을 처리하기 위해 `dog` 파라미터를 옵셔널로 받습니다.
+/// - 폼 검증을 통해 데이터 무결성을 보장합니다.
 class EditDogScreen extends StatefulWidget {
   final String ownerId;
   final DogModel? dog;
@@ -39,6 +43,8 @@ class _EditDogScreenState extends State<EditDogScreen> {
     super.dispose();
   }
 
+  /// 입력값을 검증하고 Firestore에 저장합니다.
+  /// - 신규/수정 여부에 따라 add vs update를 분기합니다.
   Future<void> _saveDog() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
@@ -65,9 +71,10 @@ class _EditDogScreenState extends State<EditDogScreen> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.dog != null;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit Dog' : 'Add Dog'),
+        title: Text(isEdit ? t.t('edit_dog') : t.t('add_dog')),
         backgroundColor: Colors.blue[600],
       ),
       body: Padding(
@@ -78,45 +85,45 @@ class _EditDogScreenState extends State<EditDogScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Dog Name',
-                  prefixIcon: Icon(Icons.pets),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.t('dog_name'),
+                  prefixIcon: const Icon(Icons.pets),
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Name required' : null,
+                validator: (v) => v == null || v.trim().isEmpty ? t.t('name_required') : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _breedController,
-                decoration: const InputDecoration(
-                  labelText: 'Breed',
-                  prefixIcon: Icon(Icons.category),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.t('breed'),
+                  prefixIcon: const Icon(Icons.category),
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Breed required' : null,
+                validator: (v) => v == null || v.trim().isEmpty ? t.t('breed_required') : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _ageController,
-                decoration: const InputDecoration(
-                  labelText: 'Age',
-                  prefixIcon: Icon(Icons.cake),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.t('age'),
+                  prefixIcon: const Icon(Icons.cake),
+                  border: const OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   final age = int.tryParse(v ?? '');
-                  if (age == null || age < 0) return 'Enter a valid age';
+                  if (age == null || age < 0) return t.t('enter_valid_age');
                   return null;
                 },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _photoUrlController,
-                decoration: const InputDecoration(
-                  labelText: 'Photo URL (optional)',
-                  prefixIcon: Icon(Icons.image),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.t('photo_url_optional'),
+                  prefixIcon: const Icon(Icons.image),
+                  border: const OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
               ),
@@ -130,7 +137,7 @@ class _EditDogScreenState extends State<EditDogScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.save),
-                label: Text(isEdit ? 'Save Changes' : 'Add Dog'),
+                label: Text(isEdit ? t.t('save_changes') : t.t('add_dog')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[600],
                   foregroundColor: Colors.white,
@@ -147,4 +154,4 @@ class _EditDogScreenState extends State<EditDogScreen> {
       ),
     );
   }
-} 
+}
