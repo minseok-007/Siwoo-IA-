@@ -1,16 +1,23 @@
+/* 요약: 매칭 품질과 데이터 일관성을 최우선으로, 강아지 정보를
+   독립 도메인 모델로 분리했다. WHAT/HOW: Firestore 스키마와 1:1 매핑을
+   유지하되 enum/불변 필드로 타입 안전성과 유지보수성을 높인다. */
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_model.dart';
 
+// 성향을 정형화해 매칭·필터 로직을 단순화하고 타입 안전하게 비교·저장한다.
 /// 강아지 성향을 표현하는 열거형.
 /// enum을 사용하면 문자열 오타를 줄이고, 타입 안전하게 비교/저장이 가능합니다.
 enum DogTemperament { calm, friendly, energetic, shy, aggressive, reactive }
 
+// 활동량 기반 추천과 가격 책정의 기준이 되도록 단계를 명시한다.
 /// 에너지 레벨 (산책/활동량 매칭에 활용).
 enum EnergyLevel { low, medium, high, veryHigh }
 
+// 위험·케어 시나리오 분기를 줄이기 위해 특이사항을 사전 정의한다.
 /// 특이사항(케어 필요)을 나타내는 타입. 목록으로 복수 선택을 허용합니다.
 enum SpecialNeeds { none, medication, elderly, puppy, training, socializing }
 
+// 화면과 서비스의 결합도를 낮추기 위해 도메인 모델로 중심화한다.
 /// 강아지 도메인 모델.
 /// - 모든 필드는 불변(final)로 유지해서 데이터 일관성과 예측 가능성을 높였습니다.
 /// - Firestore 저장 시에는 Dart의 타입을 그대로 쓰고, 직렬화 시에만 적절히 변환합니다.
@@ -65,6 +72,7 @@ class DogModel {
     this.emergencyContact,
   });
 
+  // Firestore 스키마에서 안전하게 복원하려고 기본값을 포함한 방어적 파싱을 적용한다.
   /// Firestore 문서를 안전하게 앱 도메인 모델로 변환합니다.
   /// - null/타입 오류에 대비해 널 병합/기본값을 제공합니다.
   /// - enum은 저장 시 소문자 키워드만 저장하므로 toString 분해로 복원합니다.
@@ -78,23 +86,23 @@ class DogModel {
       ownerId: data['ownerId'] ?? '',
       profileImageUrl: data['profileImageUrl'],
       description: data['description'],
-      createdAt: (data['createdAt'] as Timestamp).toDate(), // Timestamp → DateTime
+      createdAt: (data['createdAt'] as Timestamp).toDate(), // 서버 시간과의 정합성을 확보하기 위함.
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       size: DogSize.values.firstWhere(
-        (e) => e.toString() == 'DogSize.${data['size']}',
+        (e) => e.toString() == 'DogSize.${data['size']}', // 슬러그 문자열을 enum으로 복원하기 위함.
         orElse: () => DogSize.medium,
       ),
       temperament: DogTemperament.values.firstWhere(
-        (e) => e.toString() == 'DogTemperament.${data['temperament']}',
+        (e) => e.toString() == 'DogTemperament.${data['temperament']}', // 슬러그를 enum으로 동일 방식으로 복원한다.
         orElse: () => DogTemperament.friendly,
       ),
       energyLevel: EnergyLevel.values.firstWhere(
-        (e) => e.toString() == 'EnergyLevel.${data['energyLevel']}',
+        (e) => e.toString() == 'EnergyLevel.${data['energyLevel']}', // 슬러그를 enum으로 동일 방식으로 복원한다.
         orElse: () => EnergyLevel.medium,
       ),
       specialNeeds: (data['specialNeeds'] as List<dynamic>?)
           ?.map((e) => SpecialNeeds.values.firstWhere(
-                (need) => need.toString() == 'SpecialNeeds.$e',
+                (need) => need.toString() == 'SpecialNeeds.$e', // 슬러그를 enum으로 변환하기 위함.
                 orElse: () => SpecialNeeds.none,
               ))
           .toList() ?? [],
@@ -110,6 +118,7 @@ class DogModel {
     );
   }
 
+  // 인덱싱과 쿼리를 단순화하고 이식성을 높이려는 의도로 슬러그와 Timestamp를 사용한다.
   /// 앱 모델을 Firestore에 저장 가능한 Map으로 변환합니다.
   /// - enum은 `split('.')`로 슬러그만 저장해 쿼리/인덱싱 시 가독성을 높입니다.
   /// - DateTime은 Firestore가 권장하는 Timestamp로 변환합니다.
@@ -125,7 +134,7 @@ class DogModel {
       'updatedAt': Timestamp.fromDate(updatedAt),
       'size': size.toString().split('.').last,
       'temperament': temperament.toString().split('.').last,
-      'energyLevel': energyLevel.toString().split('.').last,
+      'energyLevel': energyLevel.toString().split('.').last, // 저장 공간과 가독성을 위해 슬러그만 저장한다.
       'specialNeeds': specialNeeds.map((e) => e.toString().split('.').last).toList(),
       'weight': weight,
       'isNeutered': isNeutered,
@@ -139,6 +148,7 @@ class DogModel {
     };
   }
 
+  // 불변 객체에서 부분 업데이트를 위해 안전한 사본을 생성한다.
   /// 불변 객체의 편리한 복사를 위한 copyWith 패턴.
   /// - 필요한 필드만 선택적으로 변경할 수 있어 유지보수성과 테스트 용이성이 높습니다.
   DogModel copyWith({
