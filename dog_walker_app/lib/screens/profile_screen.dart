@@ -31,6 +31,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _saving = false;
 
+  // Quick access to localizations throughout the state
+  AppLocalizations get t => AppLocalizations.of(context);
+
   @override
   void initState() {
     super.initState();
