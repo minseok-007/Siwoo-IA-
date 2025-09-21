@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/review_model.dart';
 
-/// 리뷰(reviews) 컬렉션에 대한 CRUD/쿼리 서비스.
-/// - 평균 평점 계산 유틸도 함께 제공합니다.
+/// CRUD/query service for the `reviews` collection.
+/// - Also exposes helpers for computing average ratings.
 class ReviewService {
   final CollectionReference reviewsCollection = FirebaseFirestore.instance.collection('reviews');
 

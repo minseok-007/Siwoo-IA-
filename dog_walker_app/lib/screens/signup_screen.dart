@@ -8,8 +8,8 @@ import 'login_screen.dart';
 import 'auth_wrapper.dart';
 import '../l10n/app_localizations.dart';
 
-/// 이메일/비밀번호 회원가입 화면.
-/// - 사용자 유형 선택(오너/워커)과 기본 개인정보를 수집합니다.
+/// Email/password sign-up screen.
+/// - Collects the user type (owner/walker) along with basic personal details.
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -39,8 +39,8 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  /// 폼 검증 후 회원가입 요청을 수행합니다.
-  /// - 성공 시 AuthWrapper로 이동하여 인증 상태에 따른 라우팅을 위임합니다.
+  /// Validates the form and submits the sign-up request.
+  /// - On success, navigates to `AuthWrapper` so routing follows auth state.
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) {
       return;

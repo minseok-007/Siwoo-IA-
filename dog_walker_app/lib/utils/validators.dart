@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 
-/// 공통 폼 검증 유틸리티.
-/// - 입력값 유효성 검사를 분리해 위젯 코드의 가독성과 재사용성을 높입니다.
-/// - context가 제공되면 현지화된 메시지를 반환합니다.
+/// Common form validation utilities.
+/// - Separates validation logic to keep widget code readable and reusable.
+/// - Returns localized messages whenever a `BuildContext` is supplied.
 class Validators {
   static String? validateEmail(String? value, [BuildContext? context]) {
     if (value == null || value.isEmpty) {
       return context != null ? AppLocalizations.of(context).t('err_email_required') : 'Email is required';
     }
     
-    // 기본 이메일 패턴. 과도한 제약을 피하고 UX를 해치지 않도록 최소 검증만 합니다.
+    // Basic email pattern; intentionally relaxed to avoid hurting UX with over-validation.
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(value)) {
       return context != null ? AppLocalizations.of(context).t('err_email_invalid') : 'Please enter a valid email address';
@@ -28,7 +28,7 @@ class Validators {
       return context != null ? AppLocalizations.of(context).t('err_password_min') : 'Password must be at least 6 characters long';
     }
     
-    // 대문자/소문자/숫자 조합 권장: 약한 비밀번호를 예방합니다.
+    // Encourage mixing uppercase, lowercase, and numbers to prevent weak passwords.
     bool hasUppercase = value.contains(RegExp(r'[A-Z]'));
     bool hasLowercase = value.contains(RegExp(r'[a-z]'));
     bool hasNumbers = value.contains(RegExp(r'[0-9]'));

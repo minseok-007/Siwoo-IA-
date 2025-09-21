@@ -4,8 +4,8 @@ import '../models/message_model.dart';
 import '../models/walk_request_model.dart';
 import '../l10n/app_localizations.dart';
 
-/// 1:1 채팅 화면. 주어진 `chatId` 기준으로 메시지를 스트리밍합니다.
-/// - 별도 메시지 서브컬렉션(messages)을 사용하여 무한 스크롤/정렬이 효율적입니다.
+/// One-to-one chat screen that streams messages for the provided `chatId`.
+/// - Uses a dedicated `messages` subcollection to keep infinite scroll and ordering efficient.
 class ChatScreen extends StatefulWidget {
   final String chatId;
   final String userId;
@@ -67,7 +67,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  /// 입력 메시지를 생성/저장하고, 전송 후 스크롤을 하단으로 이동합니다.
+  /// Creates/persists the outgoing message and scrolls to the bottom afterward.
   void _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;

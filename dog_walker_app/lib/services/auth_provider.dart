@@ -3,9 +3,9 @@ import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import 'auth_service.dart';
 
-/// 앱 전역 인증 상태를 관리하는 ChangeNotifier.
-/// - FirebaseAuth의 authStateChanges 스트림을 구독해 로그인/로그아웃/프로필 변화를 반영합니다.
-/// - Service 레이어(AuthService)와 UI 사이의 중간 계층으로, 비동기 호출과 에러 상태를 캡슐화합니다.
+/// ChangeNotifier that manages authentication state across the app.
+/// - Subscribes to FirebaseAuth's `authStateChanges` stream to capture logins, logouts, and profile updates.
+/// - Bridges the AuthService and UI layers, encapsulating async handling and error states.
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   User? _user;
@@ -20,11 +20,11 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _user != null;
 
   AuthProvider() {
-    // 실시간 인증 상태 반영을 위해 초기화 시 스트림 구독을 설정합니다.
+    // Subscribe immediately so we keep auth state in sync in real time.
     _init();
   }
 
-  /// Firebase 인증 스트림을 구독하고 사용자 문서를 로드합니다.
+  /// Listens to the Firebase auth stream and loads the user document.
   void _init() {
     _authService.authStateChanges.listen((User? user) {
       _user = user;
@@ -37,7 +37,7 @@ class AuthProvider with ChangeNotifier {
     });
   }
 
-  /// Firestore에서 사용자 상세를 불러와 캐시합니다.
+  /// Fetches detailed user data from Firestore and caches it locally.
   Future<void> _loadUserData(String userId) async {
     try {
       _userModel = await _authService.getUserData(userId);
@@ -48,7 +48,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// 이메일/비밀번호 회원가입 처리. 성공 시 사용자 문서 생성까지 수행합니다.
+  /// Handles email/password sign-up and creates the associated user document when successful.
   Future<bool> signUp({
     required String email,
     required String password,
@@ -78,7 +78,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// 이메일/비밀번호 로그인 처리. 성공 시 사용자 문서를 로드합니다.
+  /// Handles email/password sign-in and refreshes the user document on success.
   Future<bool> signIn({
     required String email,
     required String password,
@@ -102,7 +102,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// 로그아웃 처리. 로컬 상태 초기화와 리스너 통지를 포함합니다.
+  /// Handles sign-out, resetting local state and notifying listeners.
   Future<void> signOut() async {
     _setLoading(true);
     try {
@@ -116,7 +116,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// 비밀번호 재설정(샘플 구현). 실제 앱에서는 이메일 발송 로직을 사용합니다.
+  /// Password reset placeholder; production should invoke Firebase's email workflow.
   Future<void> resetPassword(String email) async {
     _setLoading(true);
     _clearError();
@@ -130,7 +130,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// 사용자 프로필 업데이트 후 로컬 캐시를 최신화합니다.
+  /// Updates the user profile and refreshes the local cache.
   Future<void> updateUserProfile(UserModel updatedUser) async {
     _setLoading(true);
     _clearError();
@@ -147,7 +147,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // 아래 세 개의 헬퍼는 상태 변경+notify를 일관되게 처리하기 위한 내부 유틸입니다.
+  // Helpers to keep state mutations and notifications consistent.
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();

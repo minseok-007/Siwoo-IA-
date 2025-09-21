@@ -1,8 +1,9 @@
-/* 요약: 추천 품질과 신뢰도를 높이기 위해 평점/후기를 독립 모델로 관리한다.
-   WHAT/HOW: 정렬·필터에 필요한 최소 필드와 Timestamp를 표준화해 저장한다. */
+/* Summary: Manage ratings/reviews as a dedicated model to improve recommendation quality
+   and trust. WHAT/HOW: Store the minimal sortable/filterable fields with normalized
+   Timestamps. */
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// 추천과 신뢰도 계산의 근거 데이터로 쓰기 위해 후기를 도메인 모델로 분리했다.
+// Keep reviews as a domain model so recommendation and trust scoring have solid inputs.
 class ReviewModel {
   final String id;
   final String reviewerId;
@@ -22,7 +23,7 @@ class ReviewModel {
     required this.timestamp,
   });
 
-  // 외부 저장 데이터를 앱 모델로 안전하게 복원하려고 타입 변환을 일원화한다.
+  // Normalize type conversions when restoring external data into the app model.
   factory ReviewModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ReviewModel(
@@ -30,13 +31,13 @@ class ReviewModel {
       reviewerId: data['reviewerId'] ?? '',
       revieweeId: data['revieweeId'] ?? '',
       walkId: data['walkId'] ?? '',
-      rating: (data['rating'] ?? 0).toDouble(), // 정밀도를 확보하려고 double로 변환한다.
+      rating: (data['rating'] ?? 0).toDouble(), // Convert to double to preserve precision
       comment: data['comment'] ?? '',
-      timestamp: (data['timestamp'] as Timestamp).toDate(), // 정렬과 필터의 기준으로 쓰기 위함.
+      timestamp: (data['timestamp'] as Timestamp).toDate(), // Serves as the basis for sorting/filtering
     );
   }
 
-  // 분석과 정렬에 친화적인 스키마를 유지하려고 최소 필드만 직렬화한다.
+  // Serialize only the essential fields to keep analysis and sorting straightforward.
   Map<String, dynamic> toFirestore() {
     return {
       'reviewerId': reviewerId,
@@ -44,7 +45,7 @@ class ReviewModel {
       'walkId': walkId,
       'rating': rating,
       'comment': comment,
-      'timestamp': Timestamp.fromDate(timestamp), // 서버 기준 시간을 유지하기 위함.
+      'timestamp': Timestamp.fromDate(timestamp), // Keeps server-aligned ordering
     };
   }
 } 

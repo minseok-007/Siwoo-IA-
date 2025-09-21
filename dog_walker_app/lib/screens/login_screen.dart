@@ -8,8 +8,8 @@ import 'home_screen.dart';
 import 'auth_wrapper.dart';
 import '../l10n/app_localizations.dart';
 
-/// 이메일/비밀번호 로그인 화면.
-/// - Provider를 통해 AuthProvider를 호출하고 결과에 따라 내비게이션합니다.
+/// Email/password login screen.
+/// - Invokes `AuthProvider` via Provider and navigates according to the result.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -30,8 +30,8 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// 폼 검증 후 로그인 요청을 수행합니다.
-  /// - 상태/에러는 AuthProvider가 관리하고, UI는 SnackBar로 피드백합니다.
+  /// Validates the form and performs the sign-in request.
+  /// - AuthProvider manages loading/errors; the UI surfaces feedback via SnackBar.
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// 비밀번호 재설정(샘플 구현). 이메일이 없을 때는 토스트를 먼저 안내합니다.
+  /// Sample password-reset flow; prompts for an email before proceeding.
   Future<void> _resetPassword() async {
     if (_emailController.text.trim().isEmpty) {
       final t = AppLocalizations.of(context);

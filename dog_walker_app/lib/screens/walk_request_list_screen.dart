@@ -7,8 +7,8 @@ import 'walk_request_form_screen.dart';
 import 'walk_request_detail_screen.dart';
 import '../l10n/app_localizations.dart';
 
-/// 산책 요청 목록 화면.
-/// - 워커/오너에 따라 탭/목록 구성을 달리하여 UX를 최적화합니다.
+/// Walk-request list screen.
+/// - Adapts tabs/lists to optimize UX for walkers versus owners.
 class WalkRequestListScreen extends StatefulWidget {
   final bool isWalker;
   const WalkRequestListScreen({Key? key, required this.isWalker}) : super(key: key);

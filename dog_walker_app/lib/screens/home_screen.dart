@@ -13,8 +13,8 @@ import 'settings_screen.dart';
 import 'smart_matching_screen.dart'; // Added import for SmartMatchingScreen
 import '../l10n/app_localizations.dart';
 
-/// 로그인 후 진입하는 홈 대시보드.
-/// - 사용자 유형에 따라 빠른 액션을 분기해 제공하는 UX 설계입니다.
+/// Home dashboard shown after login.
+/// - Presents tailored quick actions based on the user's role.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 

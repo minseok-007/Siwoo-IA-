@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 언어 설정(로케일)을 관리하는 Provider.
-/// - null은 시스템 기본값을 의미합니다.
+/// Provider that manages the app locale.
+/// - `null` means "follow the system".
 class LocaleProvider with ChangeNotifier {
   static const _key = 'app_locale';
   Locale? _locale;

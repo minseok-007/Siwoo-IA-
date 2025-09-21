@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 라이트/다크 테마 상태를 관리하고 로컬에 지속화하는 Provider.
-/// - SharedPreferences를 사용하여 앱 재시작 간에도 사용자의 선택을 유지합니다.
+/// Provider that manages light/dark theme state and persists it locally.
+/// - Uses SharedPreferences so the user's choice survives app restarts.
 class ThemeProvider with ChangeNotifier {
   static const String _themeKey = 'theme_mode';
   bool _isDarkMode = false;

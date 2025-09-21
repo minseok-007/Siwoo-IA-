@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// 아주 심플한 내부 로컬라이제이션 클래스.
-/// - 실제 앱에서는 arb/intl 기반의 자동 생성 방식을 권장하지만,
-///   데모 목적상 간결한 맵 기반 구현을 사용합니다.
+/// Minimal in-app localization helper.
+/// - Production apps should lean on generated arb/intl workflows,
+///   but this demo keeps things simple with a map-based setup.
 class AppLocalizations {
   final Locale locale;
   AppLocalizations(this.locale);

@@ -7,8 +7,8 @@ import '../services/locale_provider.dart';
 import '../l10n/app_localizations.dart';
 import 'auth_wrapper.dart';
 
-/// 설정 화면.
-/// - 테마/언어/로그아웃과 같은 전역 설정을 제공합니다.
+/// Settings screen.
+/// - Exposes global options like theme, language, and sign-out.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 

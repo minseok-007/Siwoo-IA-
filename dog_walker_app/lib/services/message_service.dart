@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/message_model.dart';
 
-/// 채팅 메시지 전송/조회 전용 서비스.
-/// - 상위 레이어는 채팅 비즈니스 로직에 집중할 수 있고, 저장소 세부는 이곳에서 처리합니다.
+/// Service dedicated to sending and retrieving chat messages.
+/// - Keeps higher layers focused on chat business logic while persistence lives here.
 class MessageService {
   final CollectionReference chatsCollection = FirebaseFirestore.instance.collection('chats');
 

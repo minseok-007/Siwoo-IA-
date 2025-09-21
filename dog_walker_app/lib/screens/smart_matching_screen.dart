@@ -11,8 +11,8 @@ import '../services/dog_service.dart';
 import '../services/walk_request_service.dart';
 import '../l10n/app_localizations.dart';
 
-/// 스마트 매칭 결과 화면.
-/// - MatchingService의 점수 결과를 시각화하고 필터를 제공합니다.
+/// Smart matching results screen.
+/// - Visualizes `MatchingService` scores and surfaces filter controls.
 class SmartMatchingScreen extends StatefulWidget {
   const SmartMatchingScreen({Key? key}) : super(key: key);
 

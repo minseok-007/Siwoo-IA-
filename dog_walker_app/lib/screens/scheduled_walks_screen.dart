@@ -8,8 +8,8 @@ import '../services/user_service.dart';
 import 'chat_screen.dart';
 import '../l10n/app_localizations.dart';
 
-/// 워커 관점의 스케줄 화면.
-/// - 수락/완료된 산책을 목록으로 보여주고, 오너와의 채팅으로 연결합니다.
+/// Schedule view for walkers.
+/// - Lists accepted/completed walks and links into chats with owners.
 class ScheduledWalksScreen extends StatefulWidget {
   const ScheduledWalksScreen({Key? key}) : super(key: key);
 

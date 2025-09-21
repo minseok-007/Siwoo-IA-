@@ -6,8 +6,8 @@ import '../services/auth_provider.dart';
 import 'edit_dog_screen.dart';
 import '../l10n/app_localizations.dart';
 
-/// 사용자의 강아지 목록 화면.
-/// - Firestore에서 소유자 기준으로 강아지를 조회/수정/삭제합니다.
+/// Screen showing a user's dogs.
+/// - Fetches, edits, and deletes dogs in Firestore scoped by owner.
 class DogListScreen extends StatefulWidget {
   const DogListScreen({Key? key}) : super(key: key);
 

@@ -3,8 +3,8 @@ import '../models/review_model.dart';
 import '../services/review_service.dart';
 import '../l10n/app_localizations.dart';
 
-/// 리뷰 작성 화면.
-/// - 산책 완료 후 상대방에 대한 평점/코멘트를 수집합니다.
+/// Review submission screen.
+/// - Collects ratings/comments about the other party after a completed walk.
 class ReviewFormScreen extends StatefulWidget {
   final String reviewerId;
   final String revieweeId;

@@ -3,8 +3,8 @@ import '../models/review_model.dart';
 import '../services/review_service.dart';
 import '../l10n/app_localizations.dart';
 
-/// 특정 사용자에 대한 리뷰 목록 위젯.
-/// - 내부에서 FutureBuilder를 사용하여 간단히 비동기 데이터를 렌더링합니다.
+/// Review list widget for a specific user.
+/// - Uses a FutureBuilder to render async data with minimal boilerplate.
 class ReviewsListWidget extends StatelessWidget {
   final String userId;
   const ReviewsListWidget({Key? key, required this.userId}) : super(key: key);

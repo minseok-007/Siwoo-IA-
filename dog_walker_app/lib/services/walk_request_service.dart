@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/walk_request_model.dart';
 
-/// 산책 요청(walk_requests) 컬렉션을 다루는 서비스.
-/// - 인덱스 요구를 피하기 위해 일부 정렬은 메모리에서 처리합니다(개발 단계 최적화).
+/// Service for working with the `walk_requests` collection.
+/// - Performs some in-memory sorting to avoid Firestore index requirements during development.
 class WalkRequestService {
   final CollectionReference walkRequestsCollection = FirebaseFirestore.instance.collection('walk_requests');
 

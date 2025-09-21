@@ -9,9 +9,9 @@ import 'l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/auth_wrapper.dart';
 
-/// Flutter Web에서 Firebase 초기화 옵션을 `--dart-define`로 주입받아 구성합니다.
-/// - 장점: 민감정보를 코드에 커밋하지 않습니다.
-/// - 단점: 런타임 변경이 아닌 컴파일 타임 상수라, 값 변경 시 재시작 필요.
+/// Configures Firebase for Flutter Web using values injected via `--dart-define`.
+/// - Pros: keeps secrets out of source control.
+/// - Cons: values are compile-time constants, so updates require a rebuild.
 FirebaseOptions _webFirebaseOptionsFromEnv() {
   const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
   const appId = String.fromEnvironment('FIREBASE_APP_ID');
@@ -49,7 +49,7 @@ void main() async {
   runApp(const MyApp());
 }
 
-/// 앱 루트 위젯. Provider를 통해 테마/로케일/인증 상태를 주입합니다.
+/// Root app widget. Injects theme, locale, and auth state via Provider.
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

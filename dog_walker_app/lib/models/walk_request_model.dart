@@ -1,14 +1,15 @@
-/* 요약: 일정 충돌을 방지하고 상태 전이를 명확히 하려는 의도로 산책 요청을
-   독립 모델로 관리한다. WHAT/HOW: 슬러그와 Timestamp로 일관 저장한다. */
+/* Summary: Manage walk requests as a dedicated model to avoid scheduling conflicts
+   and keep state transitions clear. WHAT/HOW: Store consistently with slugs and
+   Timestamps. */
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// 상태 머신을 단순화해 버그 발생 여지를 줄이려는 목적이다.
-/// 산책 요청 상태. 상태 머신을 단순화하기 위해 명확한 단계만 유지합니다.
+// Keep the state machine compact to reduce room for bugs.
+/// Walk request status that keeps only the essential steps.
 enum WalkRequestStatus { pending, accepted, completed, cancelled }
 
-// 결제·알림·캘린더와의 결합도를 낮추기 위해 도메인 중심으로 모델링한다.
-/// 산책 요청 도메인 모델.
-/// - 생성/업데이트 시간은 DateTime으로 관리하고, 저장 시 Timestamp로 변환합니다.
+// Model around the domain to lower coupling with payments, notifications, and calendars.
+/// Walk request domain model.
+/// - Track created/updated times as DateTime values and convert to Timestamps when saving.
 class WalkRequestModel {
   final String id;
   final String ownerId;
@@ -18,8 +19,8 @@ class WalkRequestModel {
   final String location;
   final String? notes;
   final WalkRequestStatus status;
-  final int duration; // 분 단위. UI에서만 시간/분 변환
-  final double? budget; // 예산(통화 단위는 UI에서 표현)
+  final int duration; // Minutes; convert to hours/minutes only in the UI
+  final double? budget; // Budget amount; UI decides which currency to display
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -38,9 +39,9 @@ class WalkRequestModel {
     required this.updatedAt,
   });
 
-  // 외부 저장 문서를 도메인으로 안전하게 복원하려고 기본값을 둔 방어적 처리를 한다.
-  /// Firestore → WalkRequestModel 변환.
-  /// - 널/타입 이슈에 방어적으로 대응합니다.
+  // Use defensive defaults so external data restores safely into the domain model.
+  /// Firestore → WalkRequestModel conversion.
+  /// - Guard against null/type issues with fallback values.
   factory WalkRequestModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return WalkRequestModel(
@@ -48,23 +49,23 @@ class WalkRequestModel {
       ownerId: data['ownerId'] ?? '',
       walkerId: data['walkerId'],
       dogId: data['dogId'] ?? '',
-      time: data['time'] != null ? (data['time'] as Timestamp).toDate() : DateTime.now(), // 빈값으로 인한 오류를 피하기 위함.
+      time: data['time'] != null ? (data['time'] as Timestamp).toDate() : DateTime.now(), // Avoid null-time crashes
       location: data['location'] ?? '',
       notes: data['notes'],
       status: WalkRequestStatus.values.firstWhere(
-        (e) => e.toString() == 'WalkRequestStatus.' + (data['status'] ?? 'pending'), // 슬러그를 enum으로 복원하기 위함.
+        (e) => e.toString() == 'WalkRequestStatus.' + (data['status'] ?? 'pending'), // Rehydrate enum from slug
         orElse: () => WalkRequestStatus.pending,
       ),
       duration: data['duration'] ?? 30,
       budget: data['budget']?.toDouble(),
-      createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(), // 회귀에 안전하도록 기본값을 둔다.
-      updatedAt: data['updatedAt'] != null ? (data['updatedAt'] as Timestamp).toDate() : DateTime.now(), // 같은 이유로 기본값을 둔다.
+      createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(), // Default keeps rollbacks safe
+      updatedAt: data['updatedAt'] != null ? (data['updatedAt'] as Timestamp).toDate() : DateTime.now(), // Same safeguard here
     );
   }
 
-  // 쿼리와 인덱스에 친화적인 스키마를 유지하려고 슬러그와 Timestamp로 저장한다.
-  /// WalkRequestModel → Firestore 저장 Map.
-  /// - enum은 슬러그 저장, DateTime은 Timestamp 저장으로 일관성을 유지합니다.
+  // Store with slugs and Timestamps so the schema stays query/index friendly.
+  /// WalkRequestModel → Firestore-ready Map.
+  /// - Persist enums as slugs and DateTimes as Timestamps for consistency.
   Map<String, dynamic> toFirestore() {
     return {
       'ownerId': ownerId,
@@ -81,8 +82,8 @@ class WalkRequestModel {
     };
   }
 
-  // 변경 이력을 추적하고 불변성을 유지하려고 부분 갱신용 사본을 생성한다.
-  /// 불변 모델을 위한 copyWith. 선택 필드만 변경 가능합니다.
+  // Create partial-update copies to track history while keeping the model immutable.
+  /// `copyWith` helper for the immutable model; update only the fields you need.
   WalkRequestModel copyWith({
     String? id,
     String? ownerId,

@@ -3,9 +3,9 @@ import '../models/dog_model.dart';
 import '../services/dog_service.dart';
 import '../l10n/app_localizations.dart';
 
-/// 강아지 프로필 추가/수정 화면.
-/// - 동일 화면에서 생성/수정을 처리하기 위해 `dog` 파라미터를 옵셔널로 받습니다.
-/// - 폼 검증을 통해 데이터 무결성을 보장합니다.
+/// Screen for adding or editing a dog profile.
+/// - Accepts an optional `dog` so creation and edits share the same UI.
+/// - Uses form validation to preserve data integrity.
 class EditDogScreen extends StatefulWidget {
   final String ownerId;
   final DogModel? dog;
@@ -43,8 +43,8 @@ class _EditDogScreenState extends State<EditDogScreen> {
     super.dispose();
   }
 
-  /// 입력값을 검증하고 Firestore에 저장합니다.
-  /// - 신규/수정 여부에 따라 add vs update를 분기합니다.
+  /// Validates the input and saves it to Firestore.
+  /// - Chooses between add vs update depending on whether a dog already exists.
   Future<void> _saveDog() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);

@@ -7,8 +7,8 @@ import '../services/user_service.dart';
 import 'chat_screen.dart';
 import '../l10n/app_localizations.dart';
 
-/// 산책 요청 상세 화면.
-/// - 워커는 수락, 오너는 취소/재조정 등 역할 기반 액션을 제공합니다.
+/// Walk-request detail screen.
+/// - Surfaces role-specific actions: walkers accept, owners cancel/reschedule, etc.
 class WalkRequestDetailScreen extends StatefulWidget {
   final WalkRequestModel request;
   final bool isWalker;

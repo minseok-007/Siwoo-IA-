@@ -3,8 +3,8 @@ import '../models/walk_request_model.dart';
 import '../services/walk_request_service.dart';
 import '../l10n/app_localizations.dart';
 
-/// 산책 요청 생성/수정 폼 화면.
-/// - 날짜/시간 피커, 위치, 메모 등 핵심 정보를 입력 받습니다.
+/// Form screen for creating or editing a walk request.
+/// - Collects core details like date/time, location, and notes.
 class WalkRequestFormScreen extends StatefulWidget {
   final String ownerId;
   final WalkRequestModel? request;

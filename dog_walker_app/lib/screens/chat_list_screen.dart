@@ -13,8 +13,8 @@ import 'chat_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../l10n/app_localizations.dart';
 
-/// 사용자가 참여 중인 채팅 목록을 구성하는 화면.
-/// - walk_requests/채팅 컬렉션을 조합해 최근 메시지 기준으로 정렬합니다.
+/// Screen listing chats the user participates in.
+/// - Combines walk requests and chat collections, sorted by most recent message.
 class ChatListScreen extends StatefulWidget {
   final String userId;
   const ChatListScreen({Key? key, required this.userId}) : super(key: key);
