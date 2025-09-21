@@ -31,9 +31,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _saving = false;
 
-  // Quick access to localizations throughout the state
-  AppLocalizations get t => AppLocalizations.of(context);
-
   @override
   void initState() {
     super.initState();
@@ -55,10 +52,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.userModel;
 
-    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.t('profile')),
+        title: Text(AppLocalizations.of(context).t('profile')),
         backgroundColor: Colors.teal[600],
       ),
       body: user == null
@@ -88,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
                             : const Icon(Icons.save),
-                        label: Text(t.t('save_changes')),
+                        label: Text(AppLocalizations.of(context).t('save_changes')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal[600],
                           foregroundColor: Colors.white,
@@ -125,7 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               Text(
-                user.userType == UserType.dogOwner ? t.t('dog_owner') : t.t('dog_walker'),
+                user.userType == UserType.dogOwner ? AppLocalizations.of(context).t('dog_owner') : AppLocalizations.of(context).t('dog_walker'),
                 style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
               ),
             ],
@@ -142,15 +138,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(t.t('basic_info'), style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.of(context).t('basic_info'), style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
             TextFormField(
               initialValue: _fullName,
               decoration: InputDecoration(
-                labelText: t.t('full_name'),
+                labelText: AppLocalizations.of(context).t('full_name'),
                 border: const OutlineInputBorder(),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? t.t('enter_name') : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? AppLocalizations.of(context).t('enter_name') : null,
               onSaved: (v) => _fullName = v!.trim(),
             ),
             const SizedBox(height: 12),
@@ -158,7 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               initialValue: user.email,
               readOnly: true,
               decoration: InputDecoration(
-                labelText: t.t('email'),
+                labelText: AppLocalizations.of(context).t('email'),
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -167,10 +163,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               initialValue: _phoneNumber,
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
-                labelText: t.t('phone_number'),
+                labelText: AppLocalizations.of(context).t('phone_number'),
                 border: const OutlineInputBorder(),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? t.t('enter_phone') : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? AppLocalizations.of(context).t('enter_phone') : null,
               onSaved: (v) => _phoneNumber = v!.trim(),
             ),
           ],
@@ -186,12 +182,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(t.t('walker_details'), style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.of(context).t('walker_details'), style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
             DropdownButtonFormField<ExperienceLevel>(
               value: _experienceLevel,
               decoration: InputDecoration(
-                labelText: t.t('experience_level'),
+                labelText: AppLocalizations.of(context).t('experience_level'),
                 border: const OutlineInputBorder(),
               ),
               items: ExperienceLevel.values
@@ -204,18 +200,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               initialValue: _hourlyRate.toStringAsFixed(0),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: t.t('hourly_rate'),
+                labelText: AppLocalizations.of(context).t('hourly_rate'),
                 border: const OutlineInputBorder(),
               ),
               validator: (v) {
                 final parsed = double.tryParse(v ?? '');
-                if (parsed == null || parsed < 0) return t.t('enter_valid_rate');
+                if (parsed == null || parsed < 0) return AppLocalizations.of(context).t('enter_valid_rate');
                 return null;
               },
               onSaved: (v) => _hourlyRate = double.tryParse(v ?? '0') ?? 0,
             ),
             const SizedBox(height: 16),
-            Text(t.t('preferred_dog_sizes'), style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(AppLocalizations.of(context).t('preferred_dog_sizes'), style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -237,7 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               }).toList(),
             ),
             const SizedBox(height: 16),
-            Text('${t.t('max_distance_km')}: ${_maxDistance.toStringAsFixed(0)}', style: GoogleFonts.poppins(fontSize: 14)),
+            Text('${AppLocalizations.of(context).t('max_distance_km')}: ${_maxDistance.toStringAsFixed(0)}', style: GoogleFonts.poppins(fontSize: 14)),
             Slider(
               value: _maxDistance,
               min: 1,
@@ -247,7 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onChanged: (v) => setState(() => _maxDistance = v),
             ),
             const SizedBox(height: 12),
-            Text(t.t('available_days'), style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(AppLocalizations.of(context).t('available_days'), style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -269,7 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               }).toList(),
             ),
             const SizedBox(height: 12),
-            Text(t.t('preferred_time_slots'), style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(AppLocalizations.of(context).t('preferred_time_slots'), style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -303,9 +299,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(t.t('dog_owner'), style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.of(context).t('dog_owner'), style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            Text(t.t('owner_manage_dogs_desc')),
+            Text(AppLocalizations.of(context).t('owner_manage_dogs_desc')),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () {
@@ -315,7 +311,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 );
               },
               icon: const Icon(Icons.pets),
-              label: Text(t.t('manage_dogs')),
+              label: Text(AppLocalizations.of(context).t('manage_dogs')),
             ),
           ],
         ),
@@ -345,13 +341,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t.t('profile_updated'))),
+          SnackBar(content: Text(AppLocalizations.of(context).t('profile_updated'))),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${t.t('failed_to_save')}: $e')),
+          SnackBar(content: Text('${AppLocalizations.of(context).t('failed_to_save')}: $e')),
         );
       }
     } finally {
