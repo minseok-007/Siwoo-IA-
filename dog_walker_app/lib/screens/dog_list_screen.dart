@@ -43,11 +43,9 @@ class _DogListScreenState extends State<DogListScreen> {
     if (user == null) return;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => EditDogScreen(ownerId: user.uid),
-      ),
+      MaterialPageRoute(builder: (context) => EditDogScreen(ownerId: user.uid)),
     );
-    if (result == true) _fetchDogs();
+    if (result != null) _fetchDogs();
   }
 
   void _onEditDog(DogModel dog) async {
@@ -57,7 +55,7 @@ class _DogListScreenState extends State<DogListScreen> {
         builder: (context) => EditDogScreen(ownerId: dog.ownerId, dog: dog),
       ),
     );
-    if (result == true) _fetchDogs();
+    if (result != null) _fetchDogs();
   }
 
   void _onDeleteDog(DogModel dog) async {
@@ -65,7 +63,11 @@ class _DogListScreenState extends State<DogListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppLocalizations.of(context).t('delete_dog')),
-        content: Text(AppLocalizations.of(context).t('delete_dog_confirm').replaceFirst('%s', dog.name)),
+        content: Text(
+          AppLocalizations.of(
+            context,
+          ).t('delete_dog_confirm').replaceFirst('%s', dog.name),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -73,7 +75,10 @@ class _DogListScreenState extends State<DogListScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(AppLocalizations.of(context).t('delete'), style: const TextStyle(color: Colors.red)),
+            child: Text(
+              AppLocalizations.of(context).t('delete'),
+              style: const TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -92,10 +97,7 @@ class _DogListScreenState extends State<DogListScreen> {
         title: Text(t.t('my_dogs')),
         backgroundColor: Colors.blue[600],
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchDogs,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchDogs),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -107,58 +109,63 @@ class _DogListScreenState extends State<DogListScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _dogs.isEmpty
-              ? Center(
-                  child: Text(
-                    t.t('no_dogs_yet'),
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          ? Center(
+              child: Text(
+                t.t('no_dogs_yet'),
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _dogs.length,
+              itemBuilder: (context, index) {
+                final dog = _dogs[index];
+                return Card(
+                  elevation: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _dogs.length,
-                  itemBuilder: (context, index) {
-                    final dog = _dogs[index];
-                    return Card(
-                      elevation: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  child: ListTile(
+                    leading: dog.profileImageUrl != null
+                        ? CircleAvatar(
+                            backgroundImage: NetworkImage(dog.profileImageUrl!),
+                            radius: 28,
+                          )
+                        : CircleAvatar(
+                            child: Icon(Icons.pets, color: Colors.blue[600]),
+                            backgroundColor: Colors.blue[50],
+                            radius: 28,
+                          ),
+                    title: Text(
+                      dog.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
                       ),
-                      child: ListTile(
-                        leading: dog.profileImageUrl != null
-                            ? CircleAvatar(
-                                backgroundImage: NetworkImage(dog.profileImageUrl!),
-                                radius: 28,
-                              )
-                            : CircleAvatar(
-                                child: Icon(Icons.pets, color: Colors.blue[600]),
-                                backgroundColor: Colors.blue[50],
-                                radius: 28,
-                              ),
-                        title: Text(
-                          dog.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    subtitle: Text(
+                      '${dog.breed} • ${dog.age} ${t.t('years_old')}',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _onEditDog(dog),
+                          tooltip: t.t('edit'),
                         ),
-                        subtitle: Text('${dog.breed} • ${dog.age} ${t.t('years_old')}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _onEditDog(dog),
-                              tooltip: t.t('edit'),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _onDeleteDog(dog),
-                              tooltip: t.t('delete'),
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _onDeleteDog(dog),
+                          tooltip: t.t('delete'),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
-} 
+}

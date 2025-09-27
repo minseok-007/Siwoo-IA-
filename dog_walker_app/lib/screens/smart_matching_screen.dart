@@ -1,18 +1,52 @@
+// Flutter framework imports
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+// Firebase imports for data access
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Local model imports
 import '../models/user_model.dart';
 import '../models/dog_model.dart';
 import '../models/walk_request_model.dart';
+
+// Service layer imports
 import '../services/matching_service.dart';
 import '../services/auth_provider.dart';
 import '../services/user_service.dart';
 import '../services/dog_service.dart';
 import '../services/walk_request_service.dart';
+
+// Internationalization support
 import '../l10n/app_localizations.dart';
 
-/// Smart matching results screen.
-/// - Visualizes `MatchingService` scores and surfaces filter controls.
+/// Advanced matching screen that provides intelligent walker recommendations.
+/// 
+/// This screen implements a sophisticated matching system that:
+/// - Uses weighted algorithms to score walker compatibility
+/// - Provides real-time filtering and sorting options
+/// - Displays detailed match breakdowns and explanations
+/// - Allows users to refine their search criteria
+/// - Shows walker profiles with comprehensive information
+/// 
+/// Key features:
+/// - Multi-factor scoring (distance, experience, rating, price, etc.)
+/// - Interactive filter controls with real-time updates
+/// - Detailed match score breakdowns
+/// - Walker profile previews with contact options
+/// - Responsive design that works on all screen sizes
+/// 
+/// Technical implementation:
+/// - Uses MatchingService for core algorithm logic
+/// - Implements efficient state management with setState
+/// - Handles async data loading with proper error states
+/// - Provides smooth user experience with loading indicators
+/// 
+/// User experience:
+/// - Intuitive filter controls for easy customization
+/// - Clear visual feedback for match quality
+/// - Easy access to walker contact and profile information
+/// - Consistent design language with the rest of the app
 class SmartMatchingScreen extends StatefulWidget {
   const SmartMatchingScreen({Key? key}) : super(key: key);
 
@@ -20,26 +54,35 @@ class SmartMatchingScreen extends StatefulWidget {
   State<SmartMatchingScreen> createState() => _SmartMatchingScreenState();
 }
 
+/// State class for the SmartMatchingScreen widget.
+/// 
+/// Manages the complex state required for the matching system including:
+/// - User data and preferences
+/// - Match results and filtering options
+/// - Loading states and error handling
+/// - Service layer interactions
 class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
+  // Service layer instances for data access
   final UserService _userService = UserService();
   final DogService _dogService = DogService();
   final WalkRequestService _walkService = WalkRequestService();
   
+  // Match results and UI state
   List<MatchResult> _matches = [];
   bool _loading = true;
   String? _error;
   
-  // Filter options
-  double _minScore = 0.5;
-  double _maxDistance = 20.0;
-  List<DogSize> _preferredDogSizes = [];
-  List<ExperienceLevel> _experienceLevels = [];
-  double _maxPrice = 100.0;
+  // Filter options for refining search results
+  double _minScore = 0.5;                    // Minimum match score threshold
+  double _maxDistance = 20.0;                // Maximum distance in kilometers
+  List<DogSize> _preferredDogSizes = [];     // Preferred dog sizes
+  List<ExperienceLevel> _experienceLevels = []; // Preferred experience levels
+  double _maxPrice = 100.0;                  // Maximum hourly rate
   
-  // Current user data
-  UserModel? _currentUser;
-  List<DogModel> _userDogs = [];
-  WalkRequestModel? _currentWalkRequest;
+  // Current user context data
+  UserModel? _currentUser;                   // Currently authenticated user
+  List<DogModel> _userDogs = [];             // User's registered dogs
+  WalkRequestModel? _currentWalkRequest;     // Current walk request being matched
 
   @override
   void initState() {

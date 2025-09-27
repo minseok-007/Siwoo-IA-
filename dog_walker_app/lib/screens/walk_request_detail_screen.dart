@@ -4,6 +4,8 @@ import '../models/walk_request_model.dart';
 import '../services/walk_request_service.dart';
 import '../services/auth_provider.dart';
 import '../services/user_service.dart';
+import '../services/dog_service.dart';
+import '../models/dog_model.dart';
 import 'chat_screen.dart';
 import '../l10n/app_localizations.dart';
 
@@ -12,10 +14,15 @@ import '../l10n/app_localizations.dart';
 class WalkRequestDetailScreen extends StatefulWidget {
   final WalkRequestModel request;
   final bool isWalker;
-  const WalkRequestDetailScreen({Key? key, required this.request, required this.isWalker}) : super(key: key);
+  const WalkRequestDetailScreen({
+    Key? key,
+    required this.request,
+    required this.isWalker,
+  }) : super(key: key);
 
   @override
-  State<WalkRequestDetailScreen> createState() => _WalkRequestDetailScreenState();
+  State<WalkRequestDetailScreen> createState() =>
+      _WalkRequestDetailScreenState();
 }
 
 class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
@@ -23,21 +30,45 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
   late WalkRequestModel _request;
   final WalkRequestService _service = WalkRequestService();
   final UserService _userService = UserService();
+  final DogService _dogService = DogService();
+  DogModel? _dog;
+  bool _loadingDog = true;
 
   @override
   void initState() {
     super.initState();
     _request = widget.request;
+    _loadDog();
+  }
+
+  Future<void> _loadDog() async {
+    try {
+      final dog = await _dogService.getDogById(_request.dogId);
+      if (!mounted) return;
+      setState(() {
+        _dog = dog;
+        _loadingDog = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingDog = false;
+      });
+    }
   }
 
   Future<void> _acceptRequest() async {
     setState(() => _processing = true);
-    
+
     final user = Provider.of<AuthProvider>(context, listen: false).user;
     if (user == null) {
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).t('user_not_authenticated'))),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).t('user_not_authenticated'),
+          ),
+        ),
       );
       return;
     }
@@ -56,7 +87,11 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     } catch (e) {
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context).t('err_accept_request')}: $e')),
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context).t('err_accept_request')}: $e',
+          ),
+        ),
       );
     }
   }
@@ -74,7 +109,11 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     } catch (e) {
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context).t('err_cancel_request')}: $e')),
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context).t('err_cancel_request')}: $e',
+          ),
+        ),
       );
     }
   }
@@ -82,7 +121,11 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
   Future<void> _rescheduleRequest() async {
     // TODO: Implement rescheduling logic
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context).t('reschedule_not_implemented'))),
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context).t('reschedule_not_implemented'),
+        ),
+      ),
     );
   }
 
@@ -98,7 +141,9 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
       final otherUser = await _userService.getUserById(otherUserId);
       if (otherUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).t('user_not_found'))),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).t('user_not_found')),
+          ),
         );
         return;
       }
@@ -107,8 +152,9 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
       if (user == null) return;
 
       // Create a unique chat ID based on walk request and participants
-      final chatId = 'walk_${_request.id}_${_request.ownerId}_${_request.walkerId}';
-      
+      final chatId =
+          'walk_${_request.id}_${_request.ownerId}_${_request.walkerId}';
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -122,7 +168,11 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context).t('err_start_chat')}: $e')),
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context).t('err_start_chat')}: $e',
+          ),
+        ),
       );
     }
   }
@@ -140,13 +190,72 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${t.t('location')}: ${_request.location}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Card(
+              color: Colors.blueGrey[50],
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _loadingDog
+                    ? const Center(child: CircularProgressIndicator())
+                    : _dog == null
+                    ? const Text(
+                        'Dog details unavailable',
+                        style: TextStyle(fontSize: 16),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Dog: ${_dog!.name}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_dog!.breed} • ${_dog!.age} ${t.t('years_old')}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Temperament: ${_dog!.temperament.toString().split('.').last}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Energy Level: ${_dog!.energyLevel.toString().split('.').last}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+            Text(
+              '${t.t('location')}: ${_request.location}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            Text('${t.t('time')}: ${_request.time}', style: const TextStyle(fontSize: 16)),
+            Text(
+              '${t.t('time')}: ${_request.time}',
+              style: const TextStyle(fontSize: 16),
+            ),
             const SizedBox(height: 8),
-            Text('${t.t('notes')}: ${_request.notes ?? "-"}', style: const TextStyle(fontSize: 16)),
+            Text(
+              '${t.t('notes')}: ${_request.notes ?? "-"}',
+              style: const TextStyle(fontSize: 16),
+            ),
             const SizedBox(height: 8),
-            Text('${t.t('status')}: ${_request.status.toString().split(".").last}', style: const TextStyle(fontSize: 16)),
+            Text(
+              '${t.t('status')}: ${_request.status.toString().split(".").last}',
+              style: const TextStyle(fontSize: 16),
+            ),
             const SizedBox(height: 24),
             if (_processing) const Center(child: CircularProgressIndicator()),
             if (!_processing)
@@ -155,33 +264,42 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                   // Action buttons row
                   Row(
                     children: [
-                      if (widget.isWalker && _request.status == WalkRequestStatus.pending)
+                      if (widget.isWalker &&
+                          _request.status == WalkRequestStatus.pending)
                         Expanded(
                           child: ElevatedButton(
                             onPressed: _acceptRequest,
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green[600]),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[600],
+                            ),
                             child: Text(t.t('accept')),
                           ),
                         ),
-                      if (!widget.isWalker && _request.status == WalkRequestStatus.pending)
+                      if (!widget.isWalker &&
+                          _request.status == WalkRequestStatus.pending)
                         Expanded(
                           child: ElevatedButton(
                             onPressed: _cancelRequest,
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red[600]),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red[600],
+                            ),
                             child: Text(t.t('cancel')),
                           ),
                         ),
-                      if (!widget.isWalker && _request.status == WalkRequestStatus.accepted)
+                      if (!widget.isWalker &&
+                          _request.status == WalkRequestStatus.accepted)
                         Expanded(
                           child: ElevatedButton(
                             onPressed: _rescheduleRequest,
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[600]),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange[600],
+                            ),
                             child: Text(t.t('reschedule')),
                           ),
                         ),
                     ],
                   ),
-                  
+
                   // Chat button for accepted walks
                   if (_request.status == WalkRequestStatus.accepted) ...[
                     const SizedBox(height: 16),
@@ -190,7 +308,11 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _startChat,
                         icon: const Icon(Icons.chat_bubble_outline),
-                        label: Text(widget.isWalker ? t.t('chat_with_owner') : t.t('chat_with_walker')),
+                        label: Text(
+                          widget.isWalker
+                              ? t.t('chat_with_owner')
+                              : t.t('chat_with_walker'),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.indigo[600],
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -205,4 +327,4 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
       ),
     );
   }
-} 
+}

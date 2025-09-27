@@ -1,20 +1,66 @@
+// Firebase authentication and Firestore imports
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Local model imports
 import '../models/user_model.dart';
 
-/// Service layer responsible for authentication and user persistence.
-/// - Centralizes Firebase SDK usage so UI/providers stay decoupled.
+/// Authentication service that handles user authentication and profile management.
+/// 
+/// This service provides a clean abstraction layer over Firebase Auth and Firestore,
+/// allowing the UI layer to work with domain models instead of Firebase-specific types.
+/// 
+/// Key responsibilities:
+/// - User registration and authentication
+/// - User profile creation and management
+/// - Authentication state monitoring
+/// - Error handling and user feedback
+/// 
+/// Architecture benefits:
+/// - Centralizes Firebase SDK dependencies
+/// - Provides consistent error handling
+/// - Enables easy testing with mock implementations
+/// - Decouples UI from Firebase implementation details
 class AuthService {
+  // Firebase service instances
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Get current user
+  /// Gets the currently authenticated user from Firebase Auth.
+  /// 
+  /// Returns null if no user is currently signed in.
+  /// This is a synchronous getter that provides immediate access to the current user.
   User? get currentUser => _auth.currentUser;
 
-  // Auth state changes stream
+  /// Stream of authentication state changes.
+  /// 
+  /// This stream emits:
+  /// - A User object when a user signs in
+  /// - null when a user signs out
+  /// - The current user state on subscription
+  /// 
+  /// Used by AuthProvider to automatically update UI based on auth state.
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Sign up with email and password
+  /// Creates a new user account with email and password authentication.
+  /// 
+  /// This method performs a complete user registration flow:
+  /// 1. Creates Firebase Auth user with email/password
+  /// 2. Creates corresponding user document in Firestore
+  /// 3. Returns the authentication credentials
+  /// 
+  /// Parameters:
+  /// - [email]: User's email address (must be valid and unique)
+  /// - [password]: User's password (minimum 6 characters)
+  /// - [fullName]: User's display name
+  /// - [phoneNumber]: User's contact number
+  /// - [userType]: Whether user is a dog owner or dog walker
+  /// 
+  /// Returns:
+  /// - [UserCredential] containing authentication details
+  /// 
+  /// Throws:
+  /// - [Exception] if registration fails (email already exists, weak password, etc.)
   Future<UserCredential> signUpWithEmailAndPassword({
     required String email,
     required String password,
@@ -23,12 +69,13 @@ class AuthService {
     required UserType userType,
   }) async {
     try {
+      // Step 1: Create Firebase Auth user
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Create user document in Firestore
+      // Step 2: Create user profile document in Firestore
       UserModel userModel = UserModel(
         id: userCredential.user!.uid,
         email: email,
@@ -39,6 +86,7 @@ class AuthService {
         updatedAt: DateTime.now(),
       );
 
+      // Step 3: Persist user data to Firestore
       await _firestore
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -46,6 +94,7 @@ class AuthService {
 
       return userCredential;
     } catch (e) {
+      // Re-throw with user-friendly error message
       throw Exception('Failed to create account: $e');
     }
   }

@@ -4,11 +4,11 @@ import '../models/user_model.dart';
 import '../models/dog_model.dart';
 import '../models/walk_request_model.dart';
 
-/// 최적화 기반 매칭 서비스
+/// Optimization-based matching service
 class OptimizationMatchingService {
   static const double _earthRadius = 6371.0;
   
-  /// Hungarian Algorithm 구현
+  /// Hungarian Algorithm implementation
   static List<OptimalMatch> findOptimalMatches(
     List<UserModel> walkers,
     List<WalkRequestModel> walkRequests,

@@ -37,10 +37,12 @@ class DogModel {
   final DogSize size;
   final DogTemperament temperament;
   final EnergyLevel energyLevel;
-  final List<SpecialNeeds> specialNeeds; // Represented as an enum list for safety
+  final List<SpecialNeeds>
+  specialNeeds; // Represented as an enum list for safety
   final double weight; // Kilograms; double to allow decimals
   final bool isNeutered; // Boolean communicates neutering status clearly
-  final List<String> medicalConditions; // String list keeps expansion/search simple
+  final List<String>
+  medicalConditions; // String list keeps expansion/search simple
   final List<String> trainingCommands; // Example: ["sit", "stay", "come"]
   final bool isGoodWithOtherDogs;
   final bool isGoodWithChildren;
@@ -78,45 +80,70 @@ class DogModel {
   /// - Provide null-coalescing/defaults to guard against missing or mistyped data.
   /// - Enums are stored as lowercase slugs, so reconstruct them from `toString` values.
   factory DogModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return DogModel(
-      id: doc.id,
-      name: data['name'] ?? '',
-      breed: data['breed'] ?? '',
-      age: data['age'] ?? 0,
-      ownerId: data['ownerId'] ?? '',
-      profileImageUrl: data['profileImageUrl'],
-      description: data['description'],
-      createdAt: (data['createdAt'] as Timestamp).toDate(), // Keeps parity with server timestamps
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
-      size: DogSize.values.firstWhere(
-        (e) => e.toString() == 'DogSize.${data['size']}', // Rebuild enum from stored slug
-        orElse: () => DogSize.medium,
-      ),
-      temperament: DogTemperament.values.firstWhere(
-        (e) => e.toString() == 'DogTemperament.${data['temperament']}', // Same slug→enum restoration
-        orElse: () => DogTemperament.friendly,
-      ),
-      energyLevel: EnergyLevel.values.firstWhere(
-        (e) => e.toString() == 'EnergyLevel.${data['energyLevel']}', // Same slug→enum restoration
-        orElse: () => EnergyLevel.medium,
-      ),
-      specialNeeds: (data['specialNeeds'] as List<dynamic>?)
-          ?.map((e) => SpecialNeeds.values.firstWhere(
-                (need) => need.toString() == 'SpecialNeeds.$e', // Convert each slug back to enum
-                orElse: () => SpecialNeeds.none,
-              ))
-          .toList() ?? [],
-      weight: (data['weight'] ?? 0.0).toDouble(),
-      isNeutered: data['isNeutered'] ?? false,
-      medicalConditions: List<String>.from(data['medicalConditions'] ?? []),
-      trainingCommands: List<String>.from(data['trainingCommands'] ?? []),
-      isGoodWithOtherDogs: data['isGoodWithOtherDogs'] ?? true,
-      isGoodWithChildren: data['isGoodWithChildren'] ?? true,
-      isGoodWithStrangers: data['isGoodWithStrangers'] ?? true,
-      vetContact: data['vetContact'],
-      emergencyContact: data['emergencyContact'],
-    );
+    try {
+      final data = doc.data() as Map<String, dynamic>;
+      return DogModel(
+        id: doc.id,
+        name: data['name'] ?? '',
+        breed: data['breed'] ?? '',
+        age: data['age'] ?? 0,
+        ownerId: data['ownerId'] ?? '',
+        profileImageUrl: data['profileImageUrl'],
+        description: data['description'],
+        createdAt: (data['createdAt'] as Timestamp)
+            .toDate(), // Keeps parity with server timestamps
+        updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+        size: DogSize.values.firstWhere(
+          (e) =>
+              e.toString().split('.').last == data['size'], // Match stored slug
+          orElse: () => DogSize.medium,
+        ),
+        temperament: DogTemperament.values.firstWhere(
+          (e) =>
+              e.toString().split('.').last ==
+              data['temperament'], // Match stored slug
+          orElse: () => DogTemperament.friendly,
+        ),
+        energyLevel: EnergyLevel.values.firstWhere(
+          (e) =>
+              e.toString().split('.').last ==
+              data['energyLevel'], // Match stored slug
+          orElse: () => EnergyLevel.medium,
+        ),
+        specialNeeds:
+            (data['specialNeeds'] as List<dynamic>?)
+                ?.map(
+                  (e) => SpecialNeeds.values.firstWhere(
+                    (need) =>
+                        need.toString().split('.').last ==
+                        e, // Match stored slug
+                    orElse: () => SpecialNeeds.none,
+                  ),
+                )
+                .toList() ??
+            [],
+        weight: (data['weight'] ?? 0.0).toDouble(),
+        isNeutered: data['isNeutered'] ?? false,
+        medicalConditions: List<String>.from(data['medicalConditions'] ?? []),
+        trainingCommands: List<String>.from(data['trainingCommands'] ?? []),
+        isGoodWithOtherDogs: data['isGoodWithOtherDogs'] ?? true,
+        isGoodWithChildren: data['isGoodWithChildren'] ?? true,
+        isGoodWithStrangers: data['isGoodWithStrangers'] ?? true,
+        vetContact: data['vetContact'],
+        emergencyContact: data['emergencyContact'],
+      );
+    } catch (e) {
+      // Return a default dog model if parsing fails
+      return DogModel(
+        id: doc.id,
+        name: 'Unknown Dog',
+        breed: 'Unknown',
+        age: 0,
+        ownerId: '',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
   }
 
   // Use slugs and Timestamps to simplify indexing/queries and improve portability.
@@ -135,8 +162,13 @@ class DogModel {
       'updatedAt': Timestamp.fromDate(updatedAt),
       'size': size.toString().split('.').last,
       'temperament': temperament.toString().split('.').last,
-      'energyLevel': energyLevel.toString().split('.').last, // Store just the slug for clarity
-      'specialNeeds': specialNeeds.map((e) => e.toString().split('.').last).toList(),
+      'energyLevel': energyLevel
+          .toString()
+          .split('.')
+          .last, // Store just the slug for clarity
+      'specialNeeds': specialNeeds
+          .map((e) => e.toString().split('.').last)
+          .toList(),
       'weight': weight,
       'isNeutered': isNeutered,
       'medicalConditions': medicalConditions,
@@ -148,6 +180,15 @@ class DogModel {
       'emergencyContact': emergencyContact,
     };
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is DogModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 
   // Provide a safe clone for partial updates of an immutable object.
   /// Implements a `copyWith` pattern for immutable data classes.
@@ -201,4 +242,4 @@ class DogModel {
       emergencyContact: emergencyContact ?? this.emergencyContact,
     );
   }
-} 
+}

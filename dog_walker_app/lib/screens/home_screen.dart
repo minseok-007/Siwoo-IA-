@@ -1,8 +1,13 @@
+// Flutter framework imports
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+// Local service and model imports
 import '../services/auth_provider.dart';
 import '../models/user_model.dart';
+
+// Screen navigation imports
 import 'walk_request_form_screen.dart';
 import 'dog_list_screen.dart';
 import 'walk_request_list_screen.dart';
@@ -10,19 +15,43 @@ import 'chat_list_screen.dart';
 import 'scheduled_walks_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
-import 'smart_matching_screen.dart'; // Added import for SmartMatchingScreen
+import 'smart_matching_screen.dart';
+
+// Internationalization support
 import '../l10n/app_localizations.dart';
 
-/// Home dashboard shown after login.
-/// - Presents tailored quick actions based on the user's role.
+/// Main dashboard screen displayed after successful user authentication.
+/// 
+/// This screen serves as the central hub for the PawPal application, providing:
+/// - Role-based navigation and quick actions
+/// - User profile information display
+/// - Access to core app features (walk requests, dog management, chat, etc.)
+/// - Settings and logout functionality
+/// 
+/// Architecture:
+/// - Uses Consumer<AuthProvider> to reactively update UI based on auth state
+/// - Implements role-based UI rendering (Dog Owner vs Dog Walker)
+/// - Provides consistent navigation patterns throughout the app
+/// - Integrates with Google Fonts for enhanced typography
+/// 
+/// User Experience:
+/// - Clean, modern Material Design interface
+/// - Intuitive quick action buttons
+/// - Responsive layout that adapts to different screen sizes
+/// - Consistent theming with the rest of the application
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Get localized strings for internationalization
     final t = AppLocalizations.of(context);
+    
     return Scaffold(
+      // Use theme-based background color for consistency
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      
+      // App bar with branding and logout functionality
       appBar: AppBar(
         title: Text(
           'PawPal',
@@ -32,25 +61,30 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         backgroundColor: Colors.blue[600],
-        elevation: 0,
+        elevation: 0, // Flat design approach
         actions: [
+          // Logout button in app bar
           IconButton(
             icon: Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
+              // Get auth provider and sign out user
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
               await authProvider.signOut();
             },
           ),
         ],
       ),
+      // Main body content with reactive authentication state
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
+          // Show loading indicator while user data is being fetched
           if (authProvider.userModel == null) {
             return Center(
               child: CircularProgressIndicator(),
             );
           }
 
+          // Get current user data for role-based UI rendering
           final user = authProvider.userModel!;
           
           return SingleChildScrollView(

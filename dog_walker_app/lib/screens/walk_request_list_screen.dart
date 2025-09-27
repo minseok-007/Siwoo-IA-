@@ -83,7 +83,7 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => WalkRequestFormScreen(ownerId: user.uid),
+                builder: (context) => WalkRequestFormScreen(ownerId: user.uid),
       ),
     );
     if (result == true) _fetchRequests();
