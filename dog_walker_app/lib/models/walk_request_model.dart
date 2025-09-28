@@ -15,7 +15,8 @@ class WalkRequestModel {
   final String ownerId;
   final String? walkerId;
   final String dogId;
-  final DateTime time;
+  final DateTime startTime;
+  final DateTime endTime;
   final String location;
   final String? notes;
   final WalkRequestStatus status;
@@ -29,7 +30,8 @@ class WalkRequestModel {
     required this.ownerId,
     this.walkerId,
     required this.dogId,
-    required this.time,
+    required this.startTime,
+    required this.endTime,
     required this.location,
     this.notes,
     this.status = WalkRequestStatus.pending,
@@ -44,22 +46,47 @@ class WalkRequestModel {
   /// - Guard against null/type issues with fallback values.
   factory WalkRequestModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final startTimestamp = data['startTime'] ?? data['time'];
+    final startTime = startTimestamp != null
+        ? (startTimestamp as Timestamp).toDate()
+        : DateTime.now();
+
+    DateTime endTime;
+    if (data['endTime'] != null) {
+      endTime = (data['endTime'] as Timestamp).toDate();
+    } else if (data['duration'] != null) {
+      endTime = startTime.add(Duration(minutes: data['duration']));
+    } else {
+      endTime = startTime.add(const Duration(minutes: 30));
+    }
+
+    final durationMinutes =
+        data['duration'] ?? endTime.difference(startTime).inMinutes;
+
     return WalkRequestModel(
       id: doc.id,
       ownerId: data['ownerId'] ?? '',
       walkerId: data['walkerId'],
       dogId: data['dogId'] ?? '',
-      time: data['time'] != null ? (data['time'] as Timestamp).toDate() : DateTime.now(), // Avoid null-time crashes
+      startTime: startTime,
+      endTime: endTime,
       location: data['location'] ?? '',
       notes: data['notes'],
       status: WalkRequestStatus.values.firstWhere(
-        (e) => e.toString() == 'WalkRequestStatus.' + (data['status'] ?? 'pending'), // Rehydrate enum from slug
+        (e) =>
+            e.toString() ==
+            'WalkRequestStatus.' +
+                (data['status'] ?? 'pending'), // Rehydrate enum from slug
         orElse: () => WalkRequestStatus.pending,
       ),
-      duration: data['duration'] ?? 30,
+      duration: durationMinutes,
       budget: data['budget']?.toDouble(),
-      createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(), // Default keeps rollbacks safe
-      updatedAt: data['updatedAt'] != null ? (data['updatedAt'] as Timestamp).toDate() : DateTime.now(), // Same safeguard here
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(), // Default keeps rollbacks safe
+      updatedAt: data['updatedAt'] != null
+          ? (data['updatedAt'] as Timestamp).toDate()
+          : DateTime.now(), // Same safeguard here
     );
   }
 
@@ -71,7 +98,9 @@ class WalkRequestModel {
       'ownerId': ownerId,
       'walkerId': walkerId,
       'dogId': dogId,
-      'time': Timestamp.fromDate(time),
+      'time': Timestamp.fromDate(startTime), // Legacy field
+      'startTime': Timestamp.fromDate(startTime),
+      'endTime': Timestamp.fromDate(endTime),
       'location': location,
       'notes': notes,
       'status': status.toString().split('.').last,
@@ -89,7 +118,8 @@ class WalkRequestModel {
     String? ownerId,
     String? walkerId,
     String? dogId,
-    DateTime? time,
+    DateTime? startTime,
+    DateTime? endTime,
     String? location,
     String? notes,
     WalkRequestStatus? status,
@@ -103,7 +133,8 @@ class WalkRequestModel {
       ownerId: ownerId ?? this.ownerId,
       walkerId: walkerId ?? this.walkerId,
       dogId: dogId ?? this.dogId,
-      time: time ?? this.time,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
       location: location ?? this.location,
       notes: notes ?? this.notes,
       status: status ?? this.status,
@@ -113,4 +144,4 @@ class WalkRequestModel {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
-} 
+}

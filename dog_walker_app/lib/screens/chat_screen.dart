@@ -11,10 +11,10 @@ class ChatScreen extends StatefulWidget {
   final String userId;
   final String? otherUserName;
   final WalkRequestModel? walkRequest;
-  
+
   const ChatScreen({
-    Key? key, 
-    required this.chatId, 
+    Key? key,
+    required this.chatId,
     required this.userId,
     this.otherUserName,
     this.walkRequest,
@@ -71,7 +71,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    
+
     final msg = MessageModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       chatId: widget.chatId,
@@ -79,11 +79,11 @@ class _ChatScreenState extends State<ChatScreen> {
       text: text,
       timestamp: DateTime.now(),
     );
-    
+
     try {
       await _service.sendMessage(msg);
       _controller.clear();
-      
+
       // Scroll to bottom after sending message
       Future.delayed(const Duration(milliseconds: 100), () {
         if (_scrollController.hasClients) {
@@ -96,7 +96,11 @@ class _ChatScreenState extends State<ChatScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context).t('err_send_message')}: $e')),
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context).t('err_send_message')}: $e',
+          ),
+        ),
       );
     }
   }
@@ -120,7 +124,10 @@ class _ChatScreenState extends State<ChatScreen> {
             if (widget.walkRequest != null)
               Text(
                 '${t.t('walk_at')} ${widget.walkRequest!.location}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.normal,
+                ),
               ),
           ],
         ),
@@ -136,13 +143,15 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.indigo[50],
-                border: Border(
-                  bottom: BorderSide(color: Colors.indigo[200]!),
-                ),
+                border: Border(bottom: BorderSide(color: Colors.indigo[200]!)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.directions_walk, color: Colors.indigo[600], size: 20),
+                  Icon(
+                    Icons.directions_walk,
+                    color: Colors.indigo[600],
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -157,7 +166,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
                         Text(
-                          '${widget.walkRequest!.location} • ${_formatTime(widget.walkRequest!.time)}',
+                          '${widget.walkRequest!.location} • ${_formatTime(widget.walkRequest!.startTime)}',
                           style: TextStyle(
                             color: Colors.indigo[600],
                             fontSize: 12,
@@ -167,13 +176,20 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: _getStatusColor(widget.walkRequest!.status!),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      widget.walkRequest!.status.toString().split('.').last.toUpperCase(),
+                      widget.walkRequest!.status
+                          .toString()
+                          .split('.')
+                          .last
+                          .toUpperCase(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
@@ -184,7 +200,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
             ),
-          
+
           // Messages
           Expanded(
             child: _isLoading
@@ -224,11 +240,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         );
                       }
-                      
+
                       if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
                       }
-                      
+
                       final messages = snapshot.data!;
                       if (messages.isEmpty) {
                         return Center(
@@ -261,7 +277,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         );
                       }
-                      
+
                       return ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.all(16),
@@ -269,14 +285,20 @@ class _ChatScreenState extends State<ChatScreen> {
                         itemBuilder: (context, index) {
                           final msg = messages[index];
                           final isMe = msg.senderId == widget.userId;
-                          final showDate = index == 0 || 
-                              !_isSameDay(messages[index - 1].timestamp, msg.timestamp);
-                          
+                          final showDate =
+                              index == 0 ||
+                              !_isSameDay(
+                                messages[index - 1].timestamp,
+                                msg.timestamp,
+                              );
+
                           return Column(
                             children: [
                               if (showDate)
                                 Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 16),
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   child: Text(
                                     _formatDate(msg.timestamp),
                                     style: TextStyle(
@@ -287,7 +309,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ),
                                 ),
                               Align(
-                                alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                                alignment: isMe
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
                                 child: Container(
                                   margin: EdgeInsets.only(
                                     left: isMe ? 64 : 0,
@@ -296,11 +320,14 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: isMe ? Colors.indigo[100] : Colors.grey[200],
+                                    color: isMe
+                                        ? Colors.indigo[100]
+                                        : Colors.grey[200],
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         msg.text,
@@ -325,15 +352,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     },
                   ),
           ),
-          
+
           // Message input
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(
-                top: BorderSide(color: Colors.grey[300]!),
-              ),
+              border: Border(top: BorderSide(color: Colors.grey[300]!)),
             ),
             child: Row(
               children: [
@@ -390,8 +415,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool _isSameDay(DateTime date1, DateTime date2) {
     return date1.year == date2.year &&
-           date1.month == date2.month &&
-           date1.day == date2.day;
+        date1.month == date2.month &&
+        date1.day == date2.day;
   }
 
   String _formatDate(DateTime date) {
@@ -399,7 +424,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final messageDate = DateTime(date.year, date.month, date.day);
-    
+
     if (messageDate == today) {
       return AppLocalizations.of(context).t('today');
     } else if (messageDate == yesterday) {
@@ -408,4 +433,4 @@ class _ChatScreenState extends State<ChatScreen> {
       return '${date.day}/${date.month}/${date.year}';
     }
   }
-} 
+}

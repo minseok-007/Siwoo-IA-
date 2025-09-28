@@ -11,13 +11,15 @@ import '../l10n/app_localizations.dart';
 /// - Adapts tabs/lists to optimize UX for walkers versus owners.
 class WalkRequestListScreen extends StatefulWidget {
   final bool isWalker;
-  const WalkRequestListScreen({Key? key, required this.isWalker}) : super(key: key);
+  const WalkRequestListScreen({Key? key, required this.isWalker})
+    : super(key: key);
 
   @override
   State<WalkRequestListScreen> createState() => _WalkRequestListScreenState();
 }
 
-class _WalkRequestListScreenState extends State<WalkRequestListScreen> with SingleTickerProviderStateMixin {
+class _WalkRequestListScreenState extends State<WalkRequestListScreen>
+    with SingleTickerProviderStateMixin {
   final WalkRequestService _service = WalkRequestService();
   List<WalkRequestModel> _availableRequests = [];
   List<WalkRequestModel> _acceptedRequests = [];
@@ -51,13 +53,16 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
         // For walkers, fetch both available and accepted requests
         final available = await _service.getAvailableRequests();
         final accepted = await _service.getRequestsByWalker(user.uid);
-        
+
         setState(() {
           _availableRequests = available;
-          _acceptedRequests = accepted.where((req) => 
-            req.status == WalkRequestStatus.accepted || 
-            req.status == WalkRequestStatus.completed
-          ).toList();
+          _acceptedRequests = accepted
+              .where(
+                (req) =>
+                    req.status == WalkRequestStatus.accepted ||
+                    req.status == WalkRequestStatus.completed,
+              )
+              .toList();
           _loading = false;
         });
       } else {
@@ -83,7 +88,7 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-                builder: (context) => WalkRequestFormScreen(ownerId: user.uid),
+        builder: (context) => WalkRequestFormScreen(ownerId: user.uid),
       ),
     );
     if (result == true) _fetchRequests();
@@ -93,7 +98,8 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => WalkRequestDetailScreen(request: req, isWalker: widget.isWalker),
+        builder: (context) =>
+            WalkRequestDetailScreen(request: req, isWalker: widget.isWalker),
       ),
     );
     if (result == true) _fetchRequests();
@@ -103,14 +109,12 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
     return Card(
       elevation: 3,
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
         leading: Icon(
-          Icons.directions_walk, 
-          color: _getStatusColor(req.status!), 
-          size: 32
+          Icons.directions_walk,
+          color: _getStatusColor(req.status!),
+          size: 32,
         ),
         title: Text(
           req.location,
@@ -119,7 +123,9 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${req.time.day}/${req.time.month}/${req.time.year} ${AppLocalizations.of(context).t('at')} ${req.time.hour}:${req.time.minute.toString().padLeft(2, '0')}'),
+            Text(
+              '${req.startTime.day}/${req.startTime.month}/${req.startTime.year} ${AppLocalizations.of(context).t('at')} ${req.startTime.hour}:${req.startTime.minute.toString().padLeft(2, '0')} - ${req.endTime.hour}:${req.endTime.minute.toString().padLeft(2, '0')}',
+            ),
             Text(
               '${AppLocalizations.of(context).t('status')}: ${req.status.toString().split(".").last.toUpperCase()}',
               style: TextStyle(
@@ -180,56 +186,58 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
             _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _availableRequests.isEmpty
-                    ? Center(
-                        child: Text(
-                          t.t('no_available_walks'),
-                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _availableRequests.length,
-                        itemBuilder: (context, index) => _buildRequestCard(_availableRequests[index]),
-                      ),
-            
+                ? Center(
+                    child: Text(
+                      t.t('no_available_walks'),
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _availableRequests.length,
+                    itemBuilder: (context, index) =>
+                        _buildRequestCard(_availableRequests[index]),
+                  ),
+
             // Accepted Walks Tab
             _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _acceptedRequests.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.calendar_today_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              t.t('no_accepted_walks'),
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              t.t('accept_walks_hint'),
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _acceptedRequests.length,
-                        itemBuilder: (context, index) => _buildRequestCard(_acceptedRequests[index]),
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          t.t('no_accepted_walks'),
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          t.t('accept_walks_hint'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _acceptedRequests.length,
+                    itemBuilder: (context, index) =>
+                        _buildRequestCard(_acceptedRequests[index]),
+                  ),
           ],
         ),
       );
@@ -255,17 +263,18 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen> with Sing
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _availableRequests.isEmpty
-                ? Center(
-                    child: Text(
-                      t.t('no_walk_requests_yet'),
-                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _availableRequests.length,
-                    itemBuilder: (context, index) => _buildRequestCard(_availableRequests[index]),
-                  ),
+            ? Center(
+                child: Text(
+                  t.t('no_walk_requests_yet'),
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _availableRequests.length,
+                itemBuilder: (context, index) =>
+                    _buildRequestCard(_availableRequests[index]),
+              ),
       );
     }
   }

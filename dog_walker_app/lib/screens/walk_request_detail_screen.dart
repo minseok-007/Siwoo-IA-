@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/walk_request_model.dart';
 import '../services/walk_request_service.dart';
@@ -243,12 +244,27 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${t.t('time')}: ${_request.time}',
+              'Start: ${DateFormat('MMM d, yyyy • h:mm a').format(_request.startTime)}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'End: ${DateFormat('MMM d, yyyy • h:mm a').format(_request.endTime)}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Duration: ${_request.duration} minutes',
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
               '${t.t('notes')}: ${_request.notes ?? "-"}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Compensation: ${_request.budget != null ? "\$${_request.budget!.toStringAsFixed(0)}" : '-'}',
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 8),

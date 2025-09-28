@@ -21,27 +21,27 @@ import '../services/walk_request_service.dart';
 import '../l10n/app_localizations.dart';
 
 /// Advanced matching screen that provides intelligent walker recommendations.
-/// 
+///
 /// This screen implements a sophisticated matching system that:
 /// - Uses weighted algorithms to score walker compatibility
 /// - Provides real-time filtering and sorting options
 /// - Displays detailed match breakdowns and explanations
 /// - Allows users to refine their search criteria
 /// - Shows walker profiles with comprehensive information
-/// 
+///
 /// Key features:
 /// - Multi-factor scoring (distance, experience, rating, price, etc.)
 /// - Interactive filter controls with real-time updates
 /// - Detailed match score breakdowns
 /// - Walker profile previews with contact options
 /// - Responsive design that works on all screen sizes
-/// 
+///
 /// Technical implementation:
 /// - Uses MatchingService for core algorithm logic
 /// - Implements efficient state management with setState
 /// - Handles async data loading with proper error states
 /// - Provides smooth user experience with loading indicators
-/// 
+///
 /// User experience:
 /// - Intuitive filter controls for easy customization
 /// - Clear visual feedback for match quality
@@ -55,7 +55,7 @@ class SmartMatchingScreen extends StatefulWidget {
 }
 
 /// State class for the SmartMatchingScreen widget.
-/// 
+///
 /// Manages the complex state required for the matching system including:
 /// - User data and preferences
 /// - Match results and filtering options
@@ -66,23 +66,23 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
   final UserService _userService = UserService();
   final DogService _dogService = DogService();
   final WalkRequestService _walkService = WalkRequestService();
-  
+
   // Match results and UI state
   List<MatchResult> _matches = [];
   bool _loading = true;
   String? _error;
-  
+
   // Filter options for refining search results
-  double _minScore = 0.5;                    // Minimum match score threshold
-  double _maxDistance = 20.0;                // Maximum distance in kilometers
-  List<DogSize> _preferredDogSizes = [];     // Preferred dog sizes
+  double _minScore = 0.5; // Minimum match score threshold
+  double _maxDistance = 20.0; // Maximum distance in kilometers
+  List<DogSize> _preferredDogSizes = []; // Preferred dog sizes
   List<ExperienceLevel> _experienceLevels = []; // Preferred experience levels
-  double _maxPrice = 100.0;                  // Maximum hourly rate
-  
+  double _maxPrice = 100.0; // Maximum hourly rate
+
   // Current user context data
-  UserModel? _currentUser;                   // Currently authenticated user
-  List<DogModel> _userDogs = [];             // User's registered dogs
-  WalkRequestModel? _currentWalkRequest;     // Current walk request being matched
+  UserModel? _currentUser; // Currently authenticated user
+  List<DogModel> _userDogs = []; // User's registered dogs
+  WalkRequestModel? _currentWalkRequest; // Current walk request being matched
 
   @override
   void initState() {
@@ -93,30 +93,39 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
   Future<void> _loadUserData() async {
     try {
       setState(() => _loading = true);
-      
+
       final user = Provider.of<AuthProvider>(context, listen: false).userModel;
       if (user == null) {
-        setState(() => _error = AppLocalizations.of(context).t('user_not_authenticated'));
+        setState(
+          () =>
+              _error = AppLocalizations.of(context).t('user_not_authenticated'),
+        );
         return;
       }
-      
+
       _currentUser = user;
-      
+
       // Load user's dogs
       if (user.userType == UserType.dogOwner) {
         _userDogs = await _dogService.getDogsByOwner(user.id);
-        
+
         // Load current walk request if exists
         final requests = await _walkService.getRequestsByOwner(user.id);
-        _currentWalkRequest = requests.where((r) => 
-          r.status == WalkRequestStatus.pending || 
-          r.status == WalkRequestStatus.accepted
-        ).firstOrNull;
+        _currentWalkRequest = requests
+            .where(
+              (r) =>
+                  r.status == WalkRequestStatus.pending ||
+                  r.status == WalkRequestStatus.accepted,
+            )
+            .firstOrNull;
       }
-      
+
       await _findMatches();
     } catch (e) {
-      setState(() => _error = '${AppLocalizations.of(context).t('err_loading_data')}: $e');
+      setState(
+        () => _error =
+            '${AppLocalizations.of(context).t('err_loading_data')}: $e',
+      );
     } finally {
       setState(() => _loading = false);
     }
@@ -124,15 +133,16 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
 
   Future<void> _findMatches() async {
     try {
-      if (_currentUser == null || _currentUser!.userType != UserType.dogOwner) return;
+      if (_currentUser == null || _currentUser!.userType != UserType.dogOwner)
+        return;
       if (_userDogs.isEmpty) return;
-      
+
       // Get all available walkers
       final walkers = await _userService.getAllWalkers();
-      
+
       // Find matches for each dog
       final allMatches = <MatchResult>[];
-      
+
       for (final dog in _userDogs) {
         if (_currentWalkRequest != null) {
           // Use existing walk request
@@ -151,7 +161,10 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
             ownerId: _currentUser!.id,
             dogId: dog.id,
             location: AppLocalizations.of(context).t('sample_location'),
-            time: DateTime.now().add(const Duration(days: 1)),
+            startTime: DateTime.now().add(const Duration(days: 1, hours: 1)),
+            endTime: DateTime.now().add(
+              const Duration(days: 1, hours: 1, minutes: 30),
+            ),
             duration: 30,
             notes: AppLocalizations.of(context).t('sample_walk_request_note'),
             status: WalkRequestStatus.pending,
@@ -159,7 +172,7 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );
-          
+
           final matches = MatchingService.findCompatibleMatches(
             walkers,
             sampleRequest,
@@ -170,19 +183,22 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
           allMatches.addAll(matches);
         }
       }
-      
+
       // Remove duplicates and sort by score
       final uniqueMatches = <String, MatchResult>{};
       for (final match in allMatches) {
         uniqueMatches[match.walker.id] = match;
       }
-      
+
       final sortedMatches = uniqueMatches.values.toList()
         ..sort((a, b) => b.score.compareTo(a.score));
-      
+
       setState(() => _matches = sortedMatches);
     } catch (e) {
-      setState(() => _error = '${AppLocalizations.of(context).t('err_finding_matches')}: $e');
+      setState(
+        () => _error =
+            '${AppLocalizations.of(context).t('err_finding_matches')}: $e',
+      );
     }
   }
 
@@ -190,7 +206,7 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
     return _matches.where((match) {
       // Score filter
       if (match.score < _minScore) return false;
-      
+
       // Distance filter
       if (_currentUser?.location != null && match.walker.location != null) {
         final distance = MatchingService.calculateDistance(
@@ -199,23 +215,24 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
         );
         if (distance > _maxDistance) return false;
       }
-      
+
       // Dog size filter
       if (_preferredDogSizes.isNotEmpty) {
-        final hasPreferredSize = _userDogs.any((dog) => 
-          _preferredDogSizes.contains(dog.size)
+        final hasPreferredSize = _userDogs.any(
+          (dog) => _preferredDogSizes.contains(dog.size),
         );
         if (!hasPreferredSize) return false;
       }
-      
+
       // Experience level filter
       if (_experienceLevels.isNotEmpty) {
-        if (!_experienceLevels.contains(match.walker.experienceLevel)) return false;
+        if (!_experienceLevels.contains(match.walker.experienceLevel))
+          return false;
       }
-      
+
       // Price filter
       if (match.walker.hourlyRate > _maxPrice) return false;
-      
+
       return true;
     }).toList();
   }
@@ -223,7 +240,7 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredMatches = _getFilteredMatches();
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).t('smart_matching')),
@@ -233,46 +250,43 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _findMatches,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _findMatches),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-                      const SizedBox(height: 16),
-                      Text(_error!, style: TextStyle(color: Colors.red[600])),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadUserData,
-                        child: Text(AppLocalizations.of(context).t('retry')),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                  const SizedBox(height: 16),
+                  Text(_error!, style: TextStyle(color: Colors.red[600])),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadUserData,
+                    child: Text(AppLocalizations.of(context).t('retry')),
                   ),
-                )
-      : Column(
-                  children: [
-                    _buildStatsCard(filteredMatches),
-                    Expanded(
-                      child: filteredMatches.isEmpty
-                          ? _buildEmptyState()
-                          : ListView.builder(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: filteredMatches.length,
-                              itemBuilder: (context, index) {
-                                return _buildMatchCard(filteredMatches[index]);
-                              },
-                            ),
-                    ),
-                  ],
+                ],
+              ),
+            )
+          : Column(
+              children: [
+                _buildStatsCard(filteredMatches),
+                Expanded(
+                  child: filteredMatches.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredMatches.length,
+                          itemBuilder: (context, index) {
+                            return _buildMatchCard(filteredMatches[index]);
+                          },
+                        ),
                 ),
+              ],
+            ),
     );
   }
 
@@ -286,9 +300,9 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
           children: [
             Text(
               AppLocalizations.of(context).t('matching_results'),
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Row(
@@ -313,13 +327,10 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
                   child: _buildStatItem(
                     AppLocalizations.of(context).t('nearby'),
                     '${matches.where((m) {
-                    if (_currentUser?.location == null || m.walker.location == null) return false;
-                    final distance = MatchingService.calculateDistance(
-                      _currentUser!.location!,
-                      m.walker.location!,
-                    );
-                    return distance < 5.0;
-                  }).length}',
+                      if (_currentUser?.location == null || m.walker.location == null) return false;
+                      final distance = MatchingService.calculateDistance(_currentUser!.location!, m.walker.location!);
+                      return distance < 5.0;
+                    }).length}',
                     Icons.location_on,
                     Colors.green,
                   ),
@@ -332,7 +343,12 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
@@ -346,9 +362,9 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
         ),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.grey[600],
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
           textAlign: TextAlign.center,
         ),
       ],
@@ -356,7 +372,8 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
   }
 
   Widget _buildMatchCard(MatchResult match) {
-    final distance = _currentUser?.location != null && match.walker.location != null
+    final distance =
+        _currentUser?.location != null && match.walker.location != null
         ? MatchingService.calculateDistance(
             _currentUser!.location!,
             match.walker.location!,
@@ -399,10 +416,7 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
                       ),
                       Text(
                         '${match.walker.experienceLevel.toString().split('.').last} Walker',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 16),
                       ),
                       if (distance != null)
                         Text(
@@ -419,7 +433,10 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: _getScoreColor(match.score),
                         borderRadius: BorderRadius.circular(20),
@@ -486,9 +503,9 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
       children: [
         Text(
           AppLocalizations.of(context).t('match_breakdown'),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -503,10 +520,7 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
               ),
               child: Text(
                 '${entry.key}: ${(entry.value * 100).toInt()}%',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
               ),
             );
           }).toList(),
@@ -533,10 +547,7 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
           const SizedBox(height: 8),
           Text(
             AppLocalizations.of(context).t('try_adjusting_filters'),
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             textAlign: TextAlign.center,
           ),
         ],
@@ -559,23 +570,51 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildFilterSlider(AppLocalizations.of(context).t('minimum_score'), _minScore, 0.0, 1.0, (value) {
-                setState(() => _minScore = value);
-              }),
-              _buildFilterSlider(AppLocalizations.of(context).t('max_distance_km'), _maxDistance, 1.0, 50.0, (value) {
-                setState(() => _maxDistance = value);
-              }),
-              _buildFilterSlider(AppLocalizations.of(context).t('max_price'), _maxPrice, 10.0, 200.0, (value) {
-                setState(() => _maxPrice = value);
-              }),
+              _buildFilterSlider(
+                AppLocalizations.of(context).t('minimum_score'),
+                _minScore,
+                0.0,
+                1.0,
+                (value) {
+                  setState(() => _minScore = value);
+                },
+              ),
+              _buildFilterSlider(
+                AppLocalizations.of(context).t('max_distance_km'),
+                _maxDistance,
+                1.0,
+                50.0,
+                (value) {
+                  setState(() => _maxDistance = value);
+                },
+              ),
+              _buildFilterSlider(
+                AppLocalizations.of(context).t('max_price'),
+                _maxPrice,
+                10.0,
+                200.0,
+                (value) {
+                  setState(() => _maxPrice = value);
+                },
+              ),
               const SizedBox(height: 16),
-              _buildFilterChips(AppLocalizations.of(context).t('dog_sizes'), DogSize.values, _preferredDogSizes, (sizes) {
-                setState(() => _preferredDogSizes = sizes);
-              }),
+              _buildFilterChips(
+                AppLocalizations.of(context).t('dog_sizes'),
+                DogSize.values,
+                _preferredDogSizes,
+                (sizes) {
+                  setState(() => _preferredDogSizes = sizes);
+                },
+              ),
               const SizedBox(height: 16),
-              _buildFilterChips(AppLocalizations.of(context).t('experience_levels'), ExperienceLevel.values, _experienceLevels, (levels) {
-                setState(() => _experienceLevels = levels);
-              }),
+              _buildFilterChips(
+                AppLocalizations.of(context).t('experience_levels'),
+                ExperienceLevel.values,
+                _experienceLevels,
+                (levels) {
+                  setState(() => _experienceLevels = levels);
+                },
+              ),
             ],
           ),
         ),
@@ -596,7 +635,13 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
     );
   }
 
-  Widget _buildFilterSlider(String label, double value, double min, double max, ValueChanged<double> onChanged) {
+  Widget _buildFilterSlider(
+    String label,
+    double value,
+    double min,
+    double max,
+    ValueChanged<double> onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -613,7 +658,12 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
     );
   }
 
-  Widget _buildFilterChips<T>(String label, List<T> options, List<T> selected, ValueChanged<List<T>> onChanged) {
+  Widget _buildFilterChips<T>(
+    String label,
+    List<T> options,
+    List<T> selected,
+    ValueChanged<List<T>> onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -645,14 +695,22 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
   void _viewWalkerProfile(UserModel walker) {
     // TODO: Navigate to walker profile screen
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${AppLocalizations.of(context).t('viewing_profile_of')} ${walker.fullName}')),
+      SnackBar(
+        content: Text(
+          '${AppLocalizations.of(context).t('viewing_profile_of')} ${walker.fullName}',
+        ),
+      ),
     );
   }
 
   void _requestWalk(MatchResult match) {
     // TODO: Navigate to walk request form with pre-filled walker
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${AppLocalizations.of(context).t('requesting_walk_with')} ${match.walker.fullName}')),
+      SnackBar(
+        content: Text(
+          '${AppLocalizations.of(context).t('requesting_walk_with')} ${match.walker.fullName}',
+        ),
+      ),
     );
   }
 }

@@ -37,16 +37,23 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
     try {
       final walks = await _walkService.getRequestsByWalker(user.uid);
       setState(() {
-        _scheduledWalks = walks.where((walk) => 
-          walk.status == WalkRequestStatus.accepted || 
-          walk.status == WalkRequestStatus.completed
-        ).toList();
+        _scheduledWalks = walks
+            .where(
+              (walk) =>
+                  walk.status == WalkRequestStatus.accepted ||
+                  walk.status == WalkRequestStatus.completed,
+            )
+            .toList();
         _loading = false;
       });
     } catch (e) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context).t('err_loading_scheduled')}: $e')),
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context).t('err_loading_scheduled')}: $e',
+          ),
+        ),
       );
     }
   }
@@ -56,14 +63,16 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
       final owner = await _userService.getUserById(walk.ownerId);
       if (owner == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).t('owner_not_found'))),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).t('owner_not_found')),
+          ),
         );
         return;
       }
 
       // Create a unique chat ID based on walk request and participants
       final chatId = 'walk_${walk.id}_${walk.ownerId}_${walk.walkerId}';
-      
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -77,7 +86,11 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context).t('err_start_chat')}: $e')),
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context).t('err_start_chat')}: $e',
+          ),
+        ),
       );
     }
   }
@@ -114,153 +127,162 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _scheduledWalks.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        t.t('no_scheduled_walks'),
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        t.t('accept_walks_hint'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _scheduledWalks.length,
-                  itemBuilder: (context, index) {
-                    final walk = _scheduledWalks[index];
-                    return Card(
-                      elevation: 3,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 16),
+                  Text(
+                    t.t('no_scheduled_walks'),
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    t.t('accept_walks_hint'),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _scheduledWalks.length,
+              itemBuilder: (context, index) {
+                final walk = _scheduledWalks[index];
+                return Card(
+                  elevation: 3,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.directions_walk,
-                                  color: Colors.blue[600],
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        walk.location,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _formatDateTime(walk.time),
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(walk.status!),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    walk.status.toString().split('.').last.toUpperCase(),
+                            Icon(
+                              Icons.directions_walk,
+                              color: Colors.blue[600],
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    walk.location,
                                     style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 18,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatDateTime(walk.startTime),
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            if (walk.notes != null && walk.notes!.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              Text(
-                                '${t.t('notes')}: ${walk.notes}',
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontSize: 14,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(walk.status!),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                walk.status
+                                    .toString()
+                                    .split('.')
+                                    .last
+                                    .toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () => _startChat(walk),
-                                    icon: const Icon(Icons.chat_bubble_outline),
-                                    label: Text(t.t('chat_with_owner')),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.indigo[600],
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                if (walk.status == WalkRequestStatus.accepted)
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () {
-                                        // TODO: Implement mark as completed functionality
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(t.t('mark_completed_coming_soon'))),
-                                        );
-                                      },
-                                      icon: const Icon(Icons.check_circle_outline),
-                                      label: Text(t.t('mark_complete')),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: Colors.green[600],
-                                        side: BorderSide(color: Colors.green[600]!),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                      ),
-                                    ),
-                                  ),
-                              ],
                             ),
                           ],
                         ),
-                      ),
-                    );
-                  },
-                ),
+                        if (walk.notes != null && walk.notes!.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            '${t.t('notes')}: ${walk.notes}',
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => _startChat(walk),
+                                icon: const Icon(Icons.chat_bubble_outline),
+                                label: Text(t.t('chat_with_owner')),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.indigo[600],
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            if (walk.status == WalkRequestStatus.accepted)
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    // TODO: Implement mark as completed functionality
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          t.t('mark_completed_coming_soon'),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.check_circle_outline),
+                                  label: Text(t.t('mark_complete')),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.green[600],
+                                    side: BorderSide(color: Colors.green[600]!),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
-} 
+}

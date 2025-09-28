@@ -18,34 +18,36 @@ class OptimizedMatchingScreen extends StatefulWidget {
   const OptimizedMatchingScreen({Key? key}) : super(key: key);
 
   @override
-  State<OptimizedMatchingScreen> createState() => _OptimizedMatchingScreenState();
+  State<OptimizedMatchingScreen> createState() =>
+      _OptimizedMatchingScreenState();
 }
 
 class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
     with TickerProviderStateMixin {
-  final IntegratedMatchingService _matchingService = IntegratedMatchingService();
+  final IntegratedMatchingService _matchingService =
+      IntegratedMatchingService();
   final UserService _userService = UserService();
   final DogService _dogService = DogService();
   final WalkRequestService _walkService = WalkRequestService();
-  
+
   List<IntegratedMatch> _matches = [];
   bool _loading = true;
   String? _error;
   String _selectedMethod = 'integrated';
   OptimizationCriteria _selectedCriteria = OptimizationCriteria.distanceAndTime;
-  
+
   double _minScore = 0.5;
   double _maxDistance = 20.0;
   bool _useLocationFiltering = true;
   bool _realTimeMatching = false;
-  
+
   UserModel? _currentUser;
   List<DogModel> _userDogs = [];
   WalkRequestModel? _currentWalkRequest;
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  
+
   Timer? _realTimeTimer;
 
   @override
@@ -71,25 +73,28 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
   Future<void> _loadUserData() async {
     try {
       setState(() => _loading = true);
-      
+
       final user = Provider.of<AuthProvider>(context, listen: false).userModel;
       if (user == null) {
         setState(() => _error = 'User not authenticated');
         return;
       }
-      
+
       _currentUser = user;
-      
+
       if (user.userType == UserType.dogOwner) {
         _userDogs = await _dogService.getDogsByOwner(user.id);
-        
+
         final requests = await _walkService.getRequestsByOwner(user.id);
-        _currentWalkRequest = requests.where((r) => 
-          r.status == WalkRequestStatus.pending || 
-          r.status == WalkRequestStatus.accepted
-        ).firstOrNull;
+        _currentWalkRequest = requests
+            .where(
+              (r) =>
+                  r.status == WalkRequestStatus.pending ||
+                  r.status == WalkRequestStatus.accepted,
+            )
+            .firstOrNull;
       }
-      
+
       await _findMatches();
     } catch (e) {
       setState(() => _error = 'Error loading data: $e');
@@ -100,11 +105,12 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
 
   Future<void> _findMatches() async {
     try {
-      if (_currentUser == null || _currentUser!.userType != UserType.dogOwner) return;
+      if (_currentUser == null || _currentUser!.userType != UserType.dogOwner)
+        return;
       if (_userDogs.isEmpty) return;
-      
+
       final dog = _userDogs.first;
-      
+
       if (_realTimeMatching) {
         await _startRealTimeMatching();
       } else {
@@ -117,12 +123,14 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
 
   Future<void> _executeOptimizedMatching(DogModel dog) async {
     if (_currentWalkRequest == null) {
+      final start = DateTime.now().add(const Duration(days: 1, hours: 2));
       _currentWalkRequest = WalkRequestModel(
         id: 'sample_${DateTime.now().millisecondsSinceEpoch}',
         ownerId: _currentUser!.id,
         dogId: dog.id,
         location: 'Sample Location',
-        time: DateTime.now().add(const Duration(days: 1)),
+        startTime: start,
+        endTime: start.add(const Duration(minutes: 30)),
         duration: 30,
         notes: 'Sample walk request note',
         status: WalkRequestStatus.pending,
@@ -131,7 +139,7 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
         updatedAt: DateTime.now(),
       );
     }
-    
+
     final result = await _matchingService.findOptimalMatches(
       walkRequest: _currentWalkRequest!,
       owner: _currentUser!,
@@ -140,30 +148,32 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
       maxResults: 20,
       useLocationFiltering: _useLocationFiltering,
     );
-    
+
     setState(() {
       _matches = result.matches;
       _error = result.error;
     });
-    
+
     _animationController.forward();
   }
 
   Future<void> _startRealTimeMatching() async {
     if (_currentUser == null) return;
-    
-    await _matchingService.locationService.startLocationTracking(_currentUser!.id);
-    
+
+    await _matchingService.locationService.startLocationTracking(
+      _currentUser!.id,
+    );
+
     final matches = await _matchingService.findRealTimeMatches(
       userId: _currentUser!.id,
       maxDistance: _maxDistance,
       preferredDogSizes: _userDogs.map((dog) => dog.size).toList(),
       maxResults: 10,
     );
-    
+
     setState(() => _matches = matches);
     _animationController.forward();
-    
+
     _realTimeTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
       final newMatches = await _matchingService.findRealTimeMatches(
         userId: _currentUser!.id,
@@ -171,7 +181,7 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
         preferredDogSizes: _userDogs.map((dog) => dog.size).toList(),
         maxResults: 10,
       );
-      
+
       if (mounted) {
         setState(() => _matches = newMatches);
       }
@@ -189,7 +199,7 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
   @override
   Widget build(BuildContext context) {
     final filteredMatches = _getFilteredMatches();
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Optimized Matching'),
@@ -199,50 +209,47 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _findMatches,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _findMatches),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-                      const SizedBox(height: 16),
-                      Text(_error!, style: TextStyle(color: Colors.red[600])),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadUserData,
-                        child: const Text('Retry'),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                  const SizedBox(height: 16),
+                  Text(_error!, style: TextStyle(color: Colors.red[600])),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadUserData,
+                    child: const Text('Retry'),
                   ),
-                )
-              : FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Column(
-                    children: [
-                      _buildMethodSelector(),
-                      _buildStatsCard(filteredMatches),
-                      Expanded(
-                        child: filteredMatches.isEmpty
-                            ? _buildEmptyState()
-                            : ListView.builder(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: filteredMatches.length,
-                                itemBuilder: (context, index) {
-                                  return _buildMatchCard(filteredMatches[index]);
-                                },
-                              ),
-                      ),
-                    ],
+                ],
+              ),
+            )
+          : FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                children: [
+                  _buildMethodSelector(),
+                  _buildStatsCard(filteredMatches),
+                  Expanded(
+                    child: filteredMatches.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filteredMatches.length,
+                            itemBuilder: (context, index) {
+                              return _buildMatchCard(filteredMatches[index]);
+                            },
+                          ),
                   ),
-                ),
+                ],
+              ),
+            ),
     );
   }
 
@@ -388,7 +395,12 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
@@ -403,10 +415,7 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           textAlign: TextAlign.center,
         ),
       ],
@@ -454,7 +463,10 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
                           if (match.isRealTime) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.green[100],
                                 borderRadius: BorderRadius.circular(12),
@@ -473,17 +485,11 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
                       ),
                       Text(
                         '${match.walker.experienceLevel.toString().split('.').last} Walker',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 16),
                       ),
                       Text(
                         '${match.distance.toStringAsFixed(1)} km away',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
                     ],
                   ),
@@ -492,7 +498,10 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: _getScoreColor(match.score),
                         borderRadius: BorderRadius.circular(20),
@@ -585,19 +594,19 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
               Colors.green,
             ),
             if (match.isRealTime)
-              _buildDetailChip(
-                'Real-time',
-                'Live',
-                Icons.sync,
-                Colors.purple,
-              ),
+              _buildDetailChip('Real-time', 'Live', Icons.sync, Colors.purple),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildDetailChip(String label, String value, IconData icon, Color color) {
+  Widget _buildDetailChip(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -682,7 +691,8 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
                 title: const Text('Use Location Filtering'),
                 subtitle: const Text('Filter by location'),
                 value: _useLocationFiltering,
-                onChanged: (value) => setState(() => _useLocationFiltering = value),
+                onChanged: (value) =>
+                    setState(() => _useLocationFiltering = value),
               ),
             ],
           ),
@@ -704,7 +714,13 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
     );
   }
 
-  Widget _buildFilterSlider(String label, double value, double min, double max, ValueChanged<double> onChanged) {
+  Widget _buildFilterSlider(
+    String label,
+    double value,
+    double min,
+    double max,
+    ValueChanged<double> onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

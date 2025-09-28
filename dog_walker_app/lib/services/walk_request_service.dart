@@ -4,7 +4,8 @@ import '../models/walk_request_model.dart';
 /// Service for working with the `walk_requests` collection.
 /// - Performs some in-memory sorting to avoid Firestore index requirements during development.
 class WalkRequestService {
-  final CollectionReference walkRequestsCollection = FirebaseFirestore.instance.collection('walk_requests');
+  final CollectionReference walkRequestsCollection = FirebaseFirestore.instance
+      .collection('walk_requests');
 
   Future<void> addWalkRequest(WalkRequestModel request) async {
     await walkRequestsCollection.doc(request.id).set(request.toFirestore());
@@ -19,13 +20,21 @@ class WalkRequestService {
   }
 
   Future<List<WalkRequestModel>> getRequestsByOwner(String ownerId) async {
-    final query = await walkRequestsCollection.where('ownerId', isEqualTo: ownerId).get();
-    return query.docs.map((doc) => WalkRequestModel.fromFirestore(doc)).toList();
+    final query = await walkRequestsCollection
+        .where('ownerId', isEqualTo: ownerId)
+        .get();
+    return query.docs
+        .map((doc) => WalkRequestModel.fromFirestore(doc))
+        .toList();
   }
 
   Future<List<WalkRequestModel>> getAvailableRequests() async {
-    final query = await walkRequestsCollection.where('status', isEqualTo: 'pending').get();
-    return query.docs.map((doc) => WalkRequestModel.fromFirestore(doc)).toList();
+    final query = await walkRequestsCollection
+        .where('status', isEqualTo: 'pending')
+        .get();
+    return query.docs
+        .map((doc) => WalkRequestModel.fromFirestore(doc))
+        .toList();
   }
 
   Future<List<WalkRequestModel>> getRequestsByWalker(String walkerId) async {
@@ -34,15 +43,15 @@ class WalkRequestService {
       final querySnapshot = await walkRequestsCollection
           .where('walkerId', isEqualTo: walkerId)
           .get();
-      
+
       // Sort in memory instead
       final requests = querySnapshot.docs
           .map((doc) => WalkRequestModel.fromFirestore(doc))
           .toList();
-      
+
       // Sort by time descending
-      requests.sort((a, b) => b.time.compareTo(a.time));
-      
+      requests.sort((a, b) => b.startTime.compareTo(a.startTime));
+
       return requests;
     } catch (e) {
       throw Exception('Failed to fetch walker requests: $e');
@@ -56,4 +65,4 @@ class WalkRequestService {
     }
     return null;
   }
-} 
+}

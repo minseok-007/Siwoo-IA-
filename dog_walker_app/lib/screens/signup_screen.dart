@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/user_model.dart';
+import '../models/dog_traits.dart';
 import '../services/auth_provider.dart';
 import '../utils/validators.dart';
 import 'login_screen.dart';
@@ -24,10 +25,21 @@ class _SignupScreenState extends State<SignupScreen> {
   final _confirmPasswordController = TextEditingController();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
-  
+
   UserType _selectedUserType = UserType.dogOwner;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+
+  // Walker preference fields
+  ExperienceLevel _experienceLevel = ExperienceLevel.beginner;
+  double _hourlyRate = 25;
+  double _maxDistance = 10;
+  List<DogSize> _preferredDogSizes = [];
+  List<int> _availableDays = [];
+  List<String> _preferredTimeSlots = [];
+  List<DogTemperament> _preferredTemperaments = [];
+  List<EnergyLevel> _preferredEnergyLevels = [];
+  List<SpecialNeeds> _supportedSpecialNeeds = [];
 
   @override
   void dispose() {
@@ -46,22 +58,44 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
+    if (_selectedUserType == UserType.dogWalker) {
+      if (_preferredDogSizes.isEmpty) {
+        _showWarning(AppLocalizations.of(context).t('select_dog_sizes'));
+        return;
+      }
+      if (_preferredTemperaments.isEmpty) {
+        _showWarning(AppLocalizations.of(context).t('select_temperaments'));
+        return;
+      }
+      if (_preferredEnergyLevels.isEmpty) {
+        _showWarning(AppLocalizations.of(context).t('select_energy_levels'));
+        return;
+      }
+    }
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     final success = await authProvider.signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       fullName: _fullNameController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
       userType: _selectedUserType,
+      experienceLevel: _experienceLevel,
+      hourlyRate: _hourlyRate,
+      maxDistance: _maxDistance,
+      preferredDogSizes: _preferredDogSizes,
+      availableDays: _availableDays,
+      preferredTimeSlots: _preferredTimeSlots,
+      preferredTemperaments: _preferredTemperaments,
+      preferredEnergyLevels: _preferredEnergyLevels,
+      supportedSpecialNeeds: _supportedSpecialNeeds,
     );
 
     if (success && mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => const AuthWrapper(),
-        ),
+        MaterialPageRoute(builder: (context) => const AuthWrapper()),
       );
     } else if (mounted) {
       final t = AppLocalizations.of(context);
@@ -72,6 +106,12 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       );
     }
+  }
+
+  void _showWarning(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -88,13 +128,9 @@ class _SignupScreenState extends State<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 40),
-                
+
                 // App Logo/Title
-                Icon(
-                  Icons.pets,
-                  size: 80,
-                  color: Colors.blue[600],
-                ),
+                Icon(Icons.pets, size: 80, color: Colors.blue[600]),
                 const SizedBox(height: 16),
                 Text(
                   'PawPal',
@@ -204,7 +240,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     prefixIcon: Icon(Icons.lock),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        _obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                       ),
                       onPressed: () {
                         setState(() {
@@ -230,7 +268,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     prefixIcon: Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                        _obscureConfirmPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                       ),
                       onPressed: () {
                         setState(() {
@@ -243,10 +283,19 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     filled: true,
                   ),
-                  validator: (value) => Validators.validateConfirmPassword(value, _passwordController.text, context),
+                  validator: (value) => Validators.validateConfirmPassword(
+                    value,
+                    _passwordController.text,
+                    context,
+                  ),
                   obscureText: _obscureConfirmPassword,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+                if (_selectedUserType == UserType.dogWalker)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: _buildWalkerPreferences(t),
+                  ),
 
                 // Sign Up Button
                 Consumer<AuthProvider>(
@@ -268,7 +317,9 @@ class _SignupScreenState extends State<SignupScreen> {
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
                               ),
                             )
                           : Text(
@@ -289,9 +340,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   children: [
                     Text(
                       t.t('already_have_account'),
-                      style: GoogleFonts.poppins(
-                        color: Colors.grey[600],
-                      ),
+                      style: GoogleFonts.poppins(color: Colors.grey[600]),
                     ),
                     TextButton(
                       onPressed: () {
@@ -327,7 +376,7 @@ class _SignupScreenState extends State<SignupScreen> {
     String description,
   ) {
     final isSelected = _selectedUserType == userType;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -363,10 +412,7 @@ class _SignupScreenState extends State<SignupScreen> {
             const SizedBox(height: 4),
             Text(
               description,
-              style: GoogleFonts.poppins(
-                fontSize: 10,
-                color: Colors.grey[600],
-              ),
+              style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
           ],
@@ -374,4 +420,277 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
-} 
+
+  Widget _buildWalkerPreferences(AppLocalizations t) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              t.t('walker_preferences'),
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<ExperienceLevel>(
+              value: _experienceLevel,
+              decoration: InputDecoration(
+                labelText: t.t('experience_level'),
+                border: const OutlineInputBorder(),
+              ),
+              items: ExperienceLevel.values
+                  .map(
+                    (level) => DropdownMenuItem(
+                      value: level,
+                      child: Text(_experienceToLabel(t, level)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(
+                () => _experienceLevel = value ?? ExperienceLevel.beginner,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${t.t('hourly_rate')} (4${_hourlyRate.toStringAsFixed(0)}/hr)',
+            ),
+            Slider(
+              value: _hourlyRate,
+              min: 10,
+              max: 80,
+              divisions: 70,
+              label: _hourlyRate.toStringAsFixed(0),
+              onChanged: (value) => setState(() => _hourlyRate = value),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${t.t('max_distance_km')}: ${_maxDistance.toStringAsFixed(0)}',
+            ),
+            Slider(
+              value: _maxDistance,
+              min: 1,
+              max: 40,
+              divisions: 39,
+              label: _maxDistance.toStringAsFixed(0),
+              onChanged: (value) => setState(() => _maxDistance = value),
+            ),
+            const SizedBox(height: 12),
+            _buildSelectionChips<DogSize>(
+              label: t.t('preferred_dog_sizes'),
+              options: DogSize.values,
+              selectedValues: _preferredDogSizes,
+              display: (size) => _dogSizeToLabel(t, size),
+              onToggle: (value, isSelected) => setState(() {
+                if (isSelected) {
+                  _preferredDogSizes.add(value);
+                } else {
+                  _preferredDogSizes.remove(value);
+                }
+              }),
+            ),
+            const SizedBox(height: 12),
+            _buildSelectionChips<DogTemperament>(
+              label: t.t('preferred_temperaments'),
+              options: DogTemperament.values,
+              selectedValues: _preferredTemperaments,
+              display: (temp) => _temperamentLabel(t, temp),
+              onToggle: (value, isSelected) => setState(() {
+                if (isSelected) {
+                  _preferredTemperaments.add(value);
+                } else {
+                  _preferredTemperaments.remove(value);
+                }
+              }),
+            ),
+            const SizedBox(height: 12),
+            _buildSelectionChips<EnergyLevel>(
+              label: t.t('accepted_energy_levels'),
+              options: EnergyLevel.values,
+              selectedValues: _preferredEnergyLevels,
+              display: (level) => _energyLabel(t, level),
+              onToggle: (value, isSelected) => setState(() {
+                if (isSelected) {
+                  _preferredEnergyLevels.add(value);
+                } else {
+                  _preferredEnergyLevels.remove(value);
+                }
+              }),
+            ),
+            const SizedBox(height: 12),
+            _buildSelectionChips<SpecialNeeds>(
+              label: t.t('supported_special_needs'),
+              options: SpecialNeeds.values,
+              selectedValues: _supportedSpecialNeeds,
+              display: (need) => _specialNeedLabel(t, need),
+              onToggle: (value, isSelected) => setState(() {
+                if (isSelected) {
+                  _supportedSpecialNeeds.add(value);
+                } else {
+                  _supportedSpecialNeeds.remove(value);
+                }
+              }),
+            ),
+            const SizedBox(height: 12),
+            _buildSelectionChips<int>(
+              label: t.t('available_days'),
+              options: List.generate(7, (index) => index),
+              selectedValues: _availableDays,
+              display: (day) => _dayLabel(t, day),
+              onToggle: (value, isSelected) => setState(() {
+                if (isSelected) {
+                  _availableDays.add(value);
+                } else {
+                  _availableDays.remove(value);
+                }
+              }),
+            ),
+            const SizedBox(height: 12),
+            _buildSelectionChips<String>(
+              label: t.t('preferred_time_slots'),
+              options: const ['morning', 'afternoon', 'evening'],
+              selectedValues: _preferredTimeSlots,
+              display: (slot) => _slotLabel(t, slot),
+              onToggle: (value, isSelected) => setState(() {
+                if (isSelected) {
+                  _preferredTimeSlots.add(value);
+                } else {
+                  _preferredTimeSlots.remove(value);
+                }
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectionChips<T>({
+    required String label,
+    required List<T> options,
+    required List<T> selectedValues,
+    required String Function(T) display,
+    required void Function(T value, bool isSelected) onToggle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: options.map((option) {
+            final isSelected = selectedValues.contains(option);
+            return FilterChip(
+              label: Text(display(option)),
+              selected: isSelected,
+              onSelected: (value) => onToggle(option, value),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  String _experienceToLabel(AppLocalizations t, ExperienceLevel level) {
+    switch (level) {
+      case ExperienceLevel.beginner:
+        return t.t('beginner');
+      case ExperienceLevel.intermediate:
+        return t.t('intermediate');
+      case ExperienceLevel.expert:
+        return t.t('expert');
+    }
+  }
+
+  String _dogSizeToLabel(AppLocalizations t, DogSize size) {
+    switch (size) {
+      case DogSize.small:
+        return t.t('small');
+      case DogSize.medium:
+        return t.t('medium');
+      case DogSize.large:
+        return t.t('large');
+    }
+  }
+
+  String _temperamentLabel(AppLocalizations t, DogTemperament temperament) {
+    switch (temperament) {
+      case DogTemperament.calm:
+        return t.t('temperament_calm');
+      case DogTemperament.friendly:
+        return t.t('temperament_friendly');
+      case DogTemperament.energetic:
+        return t.t('temperament_energetic');
+      case DogTemperament.shy:
+        return t.t('temperament_shy');
+      case DogTemperament.aggressive:
+        return t.t('temperament_aggressive');
+      case DogTemperament.reactive:
+        return t.t('temperament_reactive');
+    }
+  }
+
+  String _energyLabel(AppLocalizations t, EnergyLevel level) {
+    switch (level) {
+      case EnergyLevel.low:
+        return t.t('energy_low');
+      case EnergyLevel.medium:
+        return t.t('energy_medium');
+      case EnergyLevel.high:
+        return t.t('energy_high');
+      case EnergyLevel.veryHigh:
+        return t.t('energy_very_high');
+    }
+  }
+
+  String _specialNeedLabel(AppLocalizations t, SpecialNeeds need) {
+    switch (need) {
+      case SpecialNeeds.none:
+        return t.t('special_need_none');
+      case SpecialNeeds.medication:
+        return t.t('special_need_medication');
+      case SpecialNeeds.elderly:
+        return t.t('special_need_elderly');
+      case SpecialNeeds.puppy:
+        return t.t('special_need_puppy');
+      case SpecialNeeds.training:
+        return t.t('special_need_training');
+      case SpecialNeeds.socializing:
+        return t.t('special_need_socializing');
+    }
+  }
+
+  String _slotLabel(AppLocalizations t, String slot) {
+    switch (slot) {
+      case 'morning':
+        return t.t('morning');
+      case 'afternoon':
+        return t.t('afternoon');
+      case 'evening':
+        return t.t('evening');
+      default:
+        return slot;
+    }
+  }
+
+  String _dayLabel(AppLocalizations t, int day) {
+    final labels = [
+      t.t('sun'),
+      t.t('mon'),
+      t.t('tue'),
+      t.t('wed'),
+      t.t('thu'),
+      t.t('fri'),
+      t.t('sat'),
+    ];
+    return labels[day.clamp(0, 6)];
+  }
+}

@@ -2,21 +2,25 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../models/dog_model.dart';
+import '../models/dog_traits.dart';
 import '../models/walk_request_model.dart';
 
 /// Matching service that evaluates multiple factors with weighted scoring.
 /// - Scores distance, size, schedule, experience, rating, price, etc., to compute an overall match score.
 class MatchingService {
   static const double _earthRadius = 6371.0; // Earth's radius in kilometers
-  
+
   // Weight table; tune values as business priorities change.
   static const Map<String, double> _matchingWeights = {
-    'distance': 0.25,        // 25% - Geographic proximity
-    'dogSize': 0.20,         // 20% - Dog size compatibility
-    'schedule': 0.20,        // 20% - Time availability
-    'experience': 0.15,      // 15% - Walker experience level
-    'rating': 0.10,          // 10% - User rating
-    'price': 0.10,           // 10% - Price compatibility
+    'distance': 0.18,
+    'dogSize': 0.15,
+    'schedule': 0.15,
+    'experience': 0.12,
+    'rating': 0.08,
+    'price': 0.07,
+    'temperament': 0.10,
+    'energy': 0.07,
+    'specialNeeds': 0.08,
   };
 
   /// Calculates the distance between two points (km) using the Haversine formula.
@@ -27,7 +31,8 @@ class MatchingService {
     final double deltaLat = (point2.latitude - point1.latitude) * pi / 180;
     final double deltaLon = (point2.longitude - point1.longitude) * pi / 180;
 
-    final double a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+    final double a =
+        sin(deltaLat / 2) * sin(deltaLat / 2) +
         cos(lat1) * cos(lat2) * sin(deltaLon / 2) * sin(deltaLon / 2);
     final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
@@ -39,97 +44,120 @@ class MatchingService {
   static double calculateDistanceScore(double distance, double maxDistance) {
     if (distance <= 0) return 1.0;
     if (distance >= maxDistance) return 0.0;
-    
+
     // Exponential decay: closer distances get higher scores
     return exp(-distance / (maxDistance * 0.3));
   }
 
   /// Dog size compatibility score.
   /// Time Complexity: O(n) where n is the count of preferred sizes.
-  static double calculateDogSizeScore(List<DogSize> walkerPreferences, DogSize dogSize) {
-    if (walkerPreferences.isEmpty) return 0.5; // Neutral score if no preferences
-    
+  static double calculateDogSizeScore(
+    List<DogSize> walkerPreferences,
+    DogSize dogSize,
+  ) {
+    if (walkerPreferences.isEmpty)
+      return 0.5; // Neutral score if no preferences
+
     // Perfect match gets highest score
     if (walkerPreferences.contains(dogSize)) return 1.0;
-    
+
     // Size proximity scoring (small-medium-large)
     final sizeOrder = [DogSize.small, DogSize.medium, DogSize.large];
     final dogIndex = sizeOrder.indexOf(dogSize);
-    
+
     double bestScore = 0.0;
     for (final preferredSize in walkerPreferences) {
       final preferredIndex = sizeOrder.indexOf(preferredSize);
       final distance = (dogIndex - preferredIndex).abs();
-      
+
       // Score based on size proximity (adjacent sizes get good scores)
       double score;
       switch (distance) {
-        case 0: score = 1.0; break;      // Exact match
-        case 1: score = 0.7; break;      // Adjacent size
-        case 2: score = 0.3; break;      // Far size
-        default: score = 0.0; break;
+        case 0:
+          score = 1.0;
+          break; // Exact match
+        case 1:
+          score = 0.7;
+          break; // Adjacent size
+        case 2:
+          score = 0.3;
+          break; // Far size
+        default:
+          score = 0.0;
+          break;
       }
-      
+
       if (score > bestScore) bestScore = score;
     }
-    
+
     return bestScore;
   }
 
   /// Schedule compatibility score.
   /// Time Complexity: O(n*m) for day × timeslot comparisons.
-  static double calculateScheduleScore(List<int> walkerAvailableDays, List<String> walkerTimeSlots, 
-                                     DateTime walkTime, List<String> ownerTimeSlots) {
+  static double calculateScheduleScore(
+    List<int> walkerAvailableDays,
+    List<String> walkerTimeSlots,
+    DateTime walkTime,
+    List<String> ownerTimeSlots,
+  ) {
     if (walkerAvailableDays.isEmpty || walkerTimeSlots.isEmpty) return 0.0;
-    
+
     // Check day availability
     final walkDay = walkTime.weekday % 7; // Convert to 0-6 (Sunday-Saturday)
     if (!walkerAvailableDays.contains(walkDay)) return 0.0;
-    
+
     // Check time slot compatibility
     final walkHour = walkTime.hour;
     String walkTimeSlot;
-    if (walkHour < 12) walkTimeSlot = 'morning';
-    else if (walkHour < 17) walkTimeSlot = 'afternoon';
-    else walkTimeSlot = 'evening';
-    
+    if (walkHour < 12)
+      walkTimeSlot = 'morning';
+    else if (walkHour < 17)
+      walkTimeSlot = 'afternoon';
+    else
+      walkTimeSlot = 'evening';
+
     // Perfect time match
     if (walkerTimeSlots.contains(walkTimeSlot)) return 1.0;
-    
+
     // Check owner preferences
     if (ownerTimeSlots.isNotEmpty && ownerTimeSlots.contains(walkTimeSlot)) {
       return 0.8; // Good match if owner prefers this time
     }
-    
+
     return 0.5; // Neutral score
   }
 
   /// Experience-to-difficulty match score.
   /// Time Complexity: O(1)
-  static double calculateExperienceScore(ExperienceLevel walkerLevel, DogModel dog) {
+  static double calculateExperienceScore(
+    ExperienceLevel walkerLevel,
+    DogModel dog,
+  ) {
     // Map experience levels to numeric values
     final experienceMap = {
       ExperienceLevel.beginner: 1,
       ExperienceLevel.intermediate: 2,
       ExperienceLevel.expert: 3,
     };
-    
+
     final walkerValue = experienceMap[walkerLevel] ?? 1;
-    
+
     // Calculate dog difficulty score
     int dogDifficulty = 1; // Base difficulty
-    
+
     // Increase difficulty based on various factors
     if (dog.specialNeeds.contains(SpecialNeeds.training)) dogDifficulty += 2;
     if (dog.specialNeeds.contains(SpecialNeeds.puppy)) dogDifficulty += 1;
     if (dog.specialNeeds.contains(SpecialNeeds.elderly)) dogDifficulty += 1;
     if (dog.temperament == DogTemperament.aggressive) dogDifficulty += 2;
     if (dog.energyLevel == EnergyLevel.veryHigh) dogDifficulty += 1;
-    
+
     // Score based on experience vs difficulty
-    if (walkerValue >= dogDifficulty) return 1.0;           // Experienced enough
-    if (walkerValue == dogDifficulty - 1) return 0.7;       // Slightly under-experienced
-    return 0.3;                                             // Under-experienced
+    if (walkerValue >= dogDifficulty) return 1.0; // Experienced enough
+    if (walkerValue == dogDifficulty - 1)
+      return 0.7; // Slightly under-experienced
+    return 0.3; // Under-experienced
   }
 
   /// Rating score (0–1).
@@ -139,13 +167,69 @@ class MatchingService {
 
   /// Price compatibility score.
   /// Time Complexity: O(1)
-  static double calculatePriceScore(double walkerRate, double ownerBudget, double walkDuration) {
+  static double calculatePriceScore(
+    double walkerRate,
+    double ownerBudget,
+    double walkDuration,
+  ) {
     final totalCost = walkerRate * walkDuration;
-    
-    if (totalCost <= ownerBudget) return 1.0;           // Within budget
-    if (totalCost <= ownerBudget * 1.2) return 0.7;     // Slightly over budget
-    if (totalCost <= ownerBudget * 1.5) return 0.4;     // Moderately over budget
-    return 0.0;                                          // Way over budget
+
+    if (totalCost <= ownerBudget) return 1.0; // Within budget
+    if (totalCost <= ownerBudget * 1.2) return 0.7; // Slightly over budget
+    if (totalCost <= ownerBudget * 1.5) return 0.4; // Moderately over budget
+    return 0.0; // Way over budget
+  }
+
+  /// Temperament compatibility based on walker comfort levels.
+  static double calculateTemperamentScore(
+    List<DogTemperament> walkerPreferences,
+    DogTemperament dogTemperament,
+  ) {
+    if (walkerPreferences.isEmpty) return 0.6; // Neutral baseline when unset
+    return walkerPreferences.contains(dogTemperament) ? 1.0 : 0.2;
+  }
+
+  /// Energy-level compatibility score – adjacent levels receive partial credit.
+  static double calculateEnergyLevelScore(
+    List<EnergyLevel> walkerPreferences,
+    EnergyLevel dogEnergy,
+  ) {
+    if (walkerPreferences.isEmpty) return 0.6;
+    if (walkerPreferences.contains(dogEnergy)) return 1.0;
+
+    const order = [
+      EnergyLevel.low,
+      EnergyLevel.medium,
+      EnergyLevel.high,
+      EnergyLevel.veryHigh,
+    ];
+    final dogIndex = order.indexOf(dogEnergy);
+    double bestScore = 0.2;
+
+    for (final pref in walkerPreferences) {
+      final distance = (order.indexOf(pref) - dogIndex).abs();
+      if (distance == 1) {
+        bestScore = max(bestScore, 0.7);
+      }
+    }
+
+    return bestScore;
+  }
+
+  /// Special-needs compatibility score.
+  static double calculateSpecialNeedsScore(
+    List<SpecialNeeds> supportedNeeds,
+    List<SpecialNeeds> dogNeeds,
+  ) {
+    if (dogNeeds.isEmpty || dogNeeds.contains(SpecialNeeds.none)) {
+      return 1.0;
+    }
+    if (supportedNeeds.isEmpty) return 0.4;
+
+    final matches = dogNeeds
+        .where((need) => supportedNeeds.contains(need))
+        .length;
+    return matches / dogNeeds.length;
   }
 
   /// Main matching algorithm based on a weighted sum.
@@ -155,30 +239,38 @@ class MatchingService {
     List<UserModel> walkers,
     WalkRequestModel walkRequest,
     UserModel owner,
-    DogModel dog,
-    {int maxResults = 10}
-  ) {
+    DogModel dog, {
+    int maxResults = 10,
+  }) {
     final List<MatchResult> matches = [];
-    
+
     for (final walker in walkers) {
       if (walker.userType != UserType.dogWalker) continue;
-      
+
       try {
-        final matchScore = _calculateOverallMatchScore(walker, walkRequest, owner, dog);
-        
-        if (matchScore > 0.3) { // Only include reasonable matches
-          matches.add(MatchResult(
-            walker: walker,
-            score: matchScore,
-            breakdown: _getScoreBreakdown(walker, walkRequest, owner, dog),
-          ));
+        final matchScore = _calculateOverallMatchScore(
+          walker,
+          walkRequest,
+          owner,
+          dog,
+        );
+
+        if (matchScore > 0.3) {
+          // Only include reasonable matches
+          matches.add(
+            MatchResult(
+              walker: walker,
+              score: matchScore,
+              breakdown: _getScoreBreakdown(walker, walkRequest, owner, dog),
+            ),
+          );
         }
       } catch (e) {
         print('Error calculating match score for walker ${walker.id}: $e');
         continue;
       }
     }
-    
+
     // Sort by score (highest first) and limit results
     matches.sort((a, b) => b.score.compareTo(a.score));
     return matches.take(maxResults).toList();
@@ -193,40 +285,65 @@ class MatchingService {
     DogModel dog,
   ) {
     if (walker.location == null || owner.location == null) return 0.0;
-    
+
     // Calculate individual factor scores
     final distance = calculateDistance(walker.location!, owner.location!);
     final distanceScore = calculateDistanceScore(distance, walker.maxDistance);
-    
-    final dogSizeScore = calculateDogSizeScore(walker.preferredDogSizes, dog.size);
-    
+
+    final dogSizeScore = calculateDogSizeScore(
+      walker.preferredDogSizes,
+      dog.size,
+    );
+
     final scheduleScore = calculateScheduleScore(
       walker.availableDays,
       walker.preferredTimeSlots,
-      walkRequest.time,
+      walkRequest.startTime,
       owner.preferredTimeSlots,
     );
-    
-    final experienceScore = calculateExperienceScore(walker.experienceLevel, dog);
+
+    final experienceScore = calculateExperienceScore(
+      walker.experienceLevel,
+      dog,
+    );
     final ratingScore = calculateRatingScore(walker.rating);
-    
-    // Estimate walk duration (assuming 30 minutes for now)
-    final walkDuration = 0.5; // hours
-    final priceScore = calculatePriceScore(walker.hourlyRate, walkRequest.budget ?? 50.0, walkDuration);
-    
+
+    final walkDurationHours =
+        (walkRequest.duration > 0 ? walkRequest.duration : 30) / 60.0;
+    final priceScore = calculatePriceScore(
+      walker.hourlyRate,
+      walkRequest.budget ?? 50.0,
+      walkDurationHours,
+    );
+    final temperamentScore = calculateTemperamentScore(
+      walker.preferredTemperaments,
+      dog.temperament,
+    );
+    final energyScore = calculateEnergyLevelScore(
+      walker.preferredEnergyLevels,
+      dog.energyLevel,
+    );
+    final specialNeedsScore = calculateSpecialNeedsScore(
+      walker.supportedSpecialNeeds,
+      dog.specialNeeds,
+    );
+
     // Calculate weighted sum
     double totalScore = 0.0;
     double totalWeight = 0.0;
-    
+
     totalScore += distanceScore * _matchingWeights['distance']!;
     totalScore += dogSizeScore * _matchingWeights['dogSize']!;
     totalScore += scheduleScore * _matchingWeights['schedule']!;
     totalScore += experienceScore * _matchingWeights['experience']!;
     totalScore += ratingScore * _matchingWeights['rating']!;
     totalScore += priceScore * _matchingWeights['price']!;
-    
+    totalScore += temperamentScore * _matchingWeights['temperament']!;
+    totalScore += energyScore * _matchingWeights['energy']!;
+    totalScore += specialNeedsScore * _matchingWeights['specialNeeds']!;
+
     totalWeight = _matchingWeights.values.reduce((a, b) => a + b);
-    
+
     return totalScore / totalWeight;
   }
 
@@ -238,21 +355,37 @@ class MatchingService {
     DogModel dog,
   ) {
     if (walker.location == null || owner.location == null) return {};
-    
+
     final distance = calculateDistance(walker.location!, owner.location!);
-    
+
     return {
       'distance': calculateDistanceScore(distance, walker.maxDistance),
       'dogSize': calculateDogSizeScore(walker.preferredDogSizes, dog.size),
       'schedule': calculateScheduleScore(
         walker.availableDays,
         walker.preferredTimeSlots,
-        walkRequest.time,
+        walkRequest.startTime,
         owner.preferredTimeSlots,
       ),
       'experience': calculateExperienceScore(walker.experienceLevel, dog),
       'rating': calculateRatingScore(walker.rating),
-      'price': calculatePriceScore(walker.hourlyRate, walkRequest.budget ?? 50.0, 0.5),
+      'price': calculatePriceScore(
+        walker.hourlyRate,
+        walkRequest.budget ?? 50.0,
+        (walkRequest.duration > 0 ? walkRequest.duration : 30) / 60.0,
+      ),
+      'temperament': calculateTemperamentScore(
+        walker.preferredTemperaments,
+        dog.temperament,
+      ),
+      'energy': calculateEnergyLevelScore(
+        walker.preferredEnergyLevels,
+        dog.energyLevel,
+      ),
+      'specialNeeds': calculateSpecialNeedsScore(
+        walker.supportedSpecialNeeds,
+        dog.specialNeeds,
+      ),
     };
   }
 
@@ -266,55 +399,72 @@ class MatchingService {
     Map<String, DogModel> dogs,
   ) {
     if (walkers.isEmpty || walkRequests.isEmpty) return [];
-    
+
     // Create cost matrix (negative scores because Hungarian algorithm minimizes cost)
     final int n = max(walkers.length, walkRequests.length);
     final List<List<double>> costMatrix = List.generate(
       n,
       (i) => List.generate(n, (j) => 0.0),
     );
-    
+
     // Fill cost matrix with match scores
     for (int i = 0; i < walkers.length; i++) {
       for (int j = 0; j < walkRequests.length; j++) {
         final walkRequest = walkRequests[j];
         final owner = owners[walkRequest.ownerId];
         final dog = dogs[walkRequest.dogId];
-        
+
         if (owner != null && dog != null) {
-          final score = _calculateOverallMatchScore(walkers[i], walkRequest, owner, dog);
+          final score = _calculateOverallMatchScore(
+            walkers[i],
+            walkRequest,
+            owner,
+            dog,
+          );
           costMatrix[i][j] = -score; // Negative because Hungarian minimizes
         } else {
           costMatrix[i][j] = 0.0; // No match possible
         }
       }
     }
-    
+
     // Apply Hungarian algorithm (simplified version)
     final assignments = _hungarianAlgorithm(costMatrix);
-    
+
     // Convert assignments to match results
     final List<MatchResult> results = [];
     for (int i = 0; i < assignments.length; i++) {
       final walkerIndex = i;
       final requestIndex = assignments[i];
-      
+
       if (requestIndex < walkRequests.length && walkerIndex < walkers.length) {
         final walkRequest = walkRequests[requestIndex];
         final owner = owners[walkRequest.ownerId];
         final dog = dogs[walkRequest.dogId];
-        
+
         if (owner != null && dog != null) {
-          final score = _calculateOverallMatchScore(walkers[walkerIndex], walkRequest, owner, dog);
-          results.add(MatchResult(
-            walker: walkers[walkerIndex],
-            score: score,
-            breakdown: _getScoreBreakdown(walkers[walkerIndex], walkRequest, owner, dog),
-          ));
+          final score = _calculateOverallMatchScore(
+            walkers[walkerIndex],
+            walkRequest,
+            owner,
+            dog,
+          );
+          results.add(
+            MatchResult(
+              walker: walkers[walkerIndex],
+              score: score,
+              breakdown: _getScoreBreakdown(
+                walkers[walkerIndex],
+                walkRequest,
+                owner,
+                dog,
+              ),
+            ),
+          );
         }
       }
     }
-    
+
     return results;
   }
 
@@ -322,22 +472,22 @@ class MatchingService {
   static List<int> _hungarianAlgorithm(List<List<double>> costMatrix) {
     final int n = costMatrix.length;
     final List<int> assignment = List.generate(n, (i) => i);
-    
+
     // Simple greedy assignment (this can be improved with full Hungarian algorithm)
     for (int i = 0; i < n; i++) {
       double bestCost = double.infinity;
       int bestJ = i;
-      
+
       for (int j = 0; j < n; j++) {
         if (costMatrix[i][j] < bestCost) {
           bestCost = costMatrix[i][j];
           bestJ = j;
         }
       }
-      
+
       assignment[i] = bestJ;
     }
-    
+
     return assignment;
   }
 }
@@ -360,4 +510,4 @@ class MatchResult {
   String toString() {
     return 'MatchResult(walker: ${walker.fullName}, score: ${score.toStringAsFixed(3)})';
   }
-} 
+}

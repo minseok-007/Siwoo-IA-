@@ -2,6 +2,7 @@
    for matching. WHAT/HOW: Map directly to the Firestore schema while using enums and
    immutability for stability. */
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dog_traits.dart';
 
 // Define roles as enums so permission-driven logic stays explicit.
 /// Distinguishes user types (dog owner vs walker).
@@ -28,19 +29,27 @@ class UserModel {
   final String? profileImageUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
-  
+
   // Extended attributes that improve match quality and recommendations
   final GeoPoint? location; // Firestore GeoPoint: optimized for storing lat/lng
   final List<DogSize> preferredDogSizes; // Sizes a walker prefers
   final List<DogSize> dogSizes; // Sizes of the owner's dogs
   final ExperienceLevel experienceLevel; // Walker experience level
   final double hourlyRate; // Walker hourly rate (currency shown in UI)
-  final List<String> preferredTimeSlots; // e.g. ["morning", "afternoon", "evening"]
+  final List<String>
+  preferredTimeSlots; // e.g. ["morning", "afternoon", "evening"]
   final List<int> availableDays; // 0=Sun, 1=Mon ... weekday indices
   final double maxDistance; // Max travel distance (km)
   final double rating; // Average rating (0–5)
   final int totalWalks; // Total walks (trust signal)
-  final List<String> specializations; // Specialties (puppy/senior/reactive, etc.)
+  final List<String>
+  specializations; // Specialties (puppy/senior/reactive, etc.)
+  final List<DogTemperament>
+  preferredTemperaments; // Temperaments the walker is comfortable with
+  final List<EnergyLevel>
+  preferredEnergyLevels; // Energy levels the walker handles
+  final List<SpecialNeeds>
+  supportedSpecialNeeds; // Special needs the walker can manage
 
   UserModel({
     required this.id,
@@ -62,6 +71,9 @@ class UserModel {
     this.rating = 0.0,
     this.totalWalks = 0,
     this.specializations = const [],
+    this.preferredTemperaments = const [],
+    this.preferredEnergyLevels = const [],
+    this.supportedSpecialNeeds = const [],
   });
 
   // Restore enums and lists defensively when rebuilding from external storage.
@@ -79,23 +91,39 @@ class UserModel {
         orElse: () => UserType.dogOwner,
       ),
       profileImageUrl: data['profileImageUrl'],
-      createdAt: (data['createdAt'] as Timestamp).toDate(), // Keeps parity with server timestamps
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(), // Preserves auditability for changes
+      createdAt: (data['createdAt'] as Timestamp)
+          .toDate(), // Keeps parity with server timestamps
+      updatedAt: (data['updatedAt'] as Timestamp)
+          .toDate(), // Preserves auditability for changes
       location: data['location'],
-      preferredDogSizes: (data['preferredDogSizes'] as List<dynamic>?)
-          ?.map((e) => DogSize.values.firstWhere(
-                (size) => size.toString() == 'DogSize.$e', // Rehydrate enum from stored slug
-                orElse: () => DogSize.medium,
-              ))
-          .toList() ?? [],
-      dogSizes: (data['dogSizes'] as List<dynamic>?)
-          ?.map((e) => DogSize.values.firstWhere(
-                (size) => size.toString() == 'DogSize.$e', // Same slug→enum restoration
-                orElse: () => DogSize.medium,
-              ))
-          .toList() ?? [],
+      preferredDogSizes:
+          (data['preferredDogSizes'] as List<dynamic>?)
+              ?.map(
+                (e) => DogSize.values.firstWhere(
+                  (size) =>
+                      size.toString() ==
+                      'DogSize.$e', // Rehydrate enum from stored slug
+                  orElse: () => DogSize.medium,
+                ),
+              )
+              .toList() ??
+          [],
+      dogSizes:
+          (data['dogSizes'] as List<dynamic>?)
+              ?.map(
+                (e) => DogSize.values.firstWhere(
+                  (size) =>
+                      size.toString() ==
+                      'DogSize.$e', // Same slug→enum restoration
+                  orElse: () => DogSize.medium,
+                ),
+              )
+              .toList() ??
+          [],
       experienceLevel: ExperienceLevel.values.firstWhere(
-        (e) => e.toString() == 'ExperienceLevel.${data['experienceLevel']}', // Same slug→enum restoration
+        (e) =>
+            e.toString() ==
+            'ExperienceLevel.${data['experienceLevel']}', // Same slug→enum restoration
         orElse: () => ExperienceLevel.beginner,
       ),
       hourlyRate: (data['hourlyRate'] ?? 0.0).toDouble(),
@@ -105,6 +133,36 @@ class UserModel {
       rating: (data['rating'] ?? 0.0).toDouble(),
       totalWalks: data['totalWalks'] ?? 0,
       specializations: List<String>.from(data['specializations'] ?? []),
+      preferredTemperaments:
+          (data['preferredTemperaments'] as List<dynamic>?)
+              ?.map(
+                (e) => DogTemperament.values.firstWhere(
+                  (temp) => temp.toString().split('.').last == e,
+                  orElse: () => DogTemperament.friendly,
+                ),
+              )
+              .toList() ??
+          [],
+      preferredEnergyLevels:
+          (data['preferredEnergyLevels'] as List<dynamic>?)
+              ?.map(
+                (e) => EnergyLevel.values.firstWhere(
+                  (level) => level.toString().split('.').last == e,
+                  orElse: () => EnergyLevel.medium,
+                ),
+              )
+              .toList() ??
+          [],
+      supportedSpecialNeeds:
+          (data['supportedSpecialNeeds'] as List<dynamic>?)
+              ?.map(
+                (e) => SpecialNeeds.values.firstWhere(
+                  (need) => need.toString().split('.').last == e,
+                  orElse: () => SpecialNeeds.none,
+                ),
+              )
+              .toList() ??
+          [],
     );
   }
 
@@ -122,7 +180,9 @@ class UserModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'location': location,
-      'preferredDogSizes': preferredDogSizes.map((e) => e.toString().split('.').last).toList(),
+      'preferredDogSizes': preferredDogSizes
+          .map((e) => e.toString().split('.').last)
+          .toList(),
       'dogSizes': dogSizes.map((e) => e.toString().split('.').last).toList(),
       'experienceLevel': experienceLevel.toString().split('.').last,
       'hourlyRate': hourlyRate,
@@ -132,6 +192,15 @@ class UserModel {
       'rating': rating,
       'totalWalks': totalWalks,
       'specializations': specializations,
+      'preferredTemperaments': preferredTemperaments
+          .map((e) => e.toString().split('.').last)
+          .toList(),
+      'preferredEnergyLevels': preferredEnergyLevels
+          .map((e) => e.toString().split('.').last)
+          .toList(),
+      'supportedSpecialNeeds': supportedSpecialNeeds
+          .map((e) => e.toString().split('.').last)
+          .toList(),
     };
   }
 
@@ -157,6 +226,9 @@ class UserModel {
     double? rating,
     int? totalWalks,
     List<String>? specializations,
+    List<DogTemperament>? preferredTemperaments,
+    List<EnergyLevel>? preferredEnergyLevels,
+    List<SpecialNeeds>? supportedSpecialNeeds,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -178,6 +250,12 @@ class UserModel {
       rating: rating ?? this.rating,
       totalWalks: totalWalks ?? this.totalWalks,
       specializations: specializations ?? this.specializations,
+      preferredTemperaments:
+          preferredTemperaments ?? this.preferredTemperaments,
+      preferredEnergyLevels:
+          preferredEnergyLevels ?? this.preferredEnergyLevels,
+      supportedSpecialNeeds:
+          supportedSpecialNeeds ?? this.supportedSpecialNeeds,
     );
   }
-} 
+}

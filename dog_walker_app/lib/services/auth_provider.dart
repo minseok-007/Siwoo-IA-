@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
+import '../models/dog_traits.dart';
 import 'auth_service.dart';
 
 /// ChangeNotifier that manages authentication state across the app.
@@ -55,6 +56,15 @@ class AuthProvider with ChangeNotifier {
     required String fullName,
     required String phoneNumber,
     required UserType userType,
+    ExperienceLevel experienceLevel = ExperienceLevel.beginner,
+    double hourlyRate = 0.0,
+    double maxDistance = 10.0,
+    List<DogSize> preferredDogSizes = const [],
+    List<int> availableDays = const [],
+    List<String> preferredTimeSlots = const [],
+    List<DogTemperament> preferredTemperaments = const [],
+    List<EnergyLevel> preferredEnergyLevels = const [],
+    List<SpecialNeeds> supportedSpecialNeeds = const [],
   }) async {
     _setLoading(true);
     _clearError();
@@ -69,6 +79,22 @@ class AuthProvider with ChangeNotifier {
       );
       _user = userCredential.user;
       await _loadUserData(_user!.uid);
+
+      if (userType == UserType.dogWalker && _userModel != null) {
+        final updatedModel = _userModel!.copyWith(
+          experienceLevel: experienceLevel,
+          hourlyRate: hourlyRate,
+          maxDistance: maxDistance,
+          preferredDogSizes: preferredDogSizes,
+          availableDays: availableDays,
+          preferredTimeSlots: preferredTimeSlots,
+          preferredTemperaments: preferredTemperaments,
+          preferredEnergyLevels: preferredEnergyLevels,
+          supportedSpecialNeeds: supportedSpecialNeeds,
+        );
+        await _authService.updateUserData(updatedModel);
+        _userModel = updatedModel;
+      }
       _setLoading(false);
       return true;
     } catch (e) {
@@ -79,10 +105,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   /// Handles email/password sign-in and refreshes the user document on success.
-  Future<bool> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<bool> signIn({required String email, required String password}) async {
     _setLoading(true);
     _clearError();
 
@@ -166,4 +189,4 @@ class AuthProvider with ChangeNotifier {
   void clearError() {
     _clearError();
   }
-} 
+}

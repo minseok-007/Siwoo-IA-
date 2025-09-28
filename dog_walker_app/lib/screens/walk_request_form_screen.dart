@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/walk_request_model.dart';
 import '../models/dog_model.dart';
 import '../services/walk_request_service.dart';
@@ -22,9 +23,11 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _locationController = TextEditingController();
   final _notesController = TextEditingController();
+  final _budgetController = TextEditingController();
   final DogService _dogService = DogService();
 
-  DateTime? _selectedTime;
+  DateTime? _startTime;
+  DateTime? _endTime;
   String? _selectedDogId;
   List<DogModel> _userDogs = [];
   bool _saving = false;
@@ -37,7 +40,11 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
     if (widget.request != null) {
       _locationController.text = widget.request!.location;
       _notesController.text = widget.request!.notes ?? '';
-      _selectedTime = widget.request!.time;
+      _startTime = widget.request!.startTime;
+      _endTime = widget.request!.endTime;
+      if (widget.request!.budget != null) {
+        _budgetController.text = widget.request!.budget!.toStringAsFixed(0);
+      }
       _selectedDogId = widget.request!.dogId;
     }
   }
@@ -79,13 +86,15 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
   void dispose() {
     _locationController.dispose();
     _notesController.dispose();
+    _budgetController.dispose();
     super.dispose();
   }
 
   Future<void> _saveRequest() async {
     if (!_formKey.currentState!.validate() ||
-        _selectedTime == null ||
-        _selectedDogId == null) {
+        _selectedDogId == null ||
+        _startTime == null ||
+        _endTime == null) {
       if (_selectedDogId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -93,8 +102,42 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
           ),
         );
       }
+      if (_startTime == null || _endTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please choose both start and end times'),
+          ),
+        );
+      }
       return;
     }
+
+    if (!_endTime!.isAfter(_startTime!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('End time must be after start time')),
+      );
+      return;
+    }
+
+    final durationMinutes = _endTime!.difference(_startTime!).inMinutes;
+    if (durationMinutes <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Duration must be greater than zero')),
+      );
+      return;
+    }
+
+    double? budget;
+    if (_budgetController.text.trim().isNotEmpty) {
+      budget = double.tryParse(_budgetController.text.trim());
+      if (budget == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter a valid compensation amount')),
+        );
+        return;
+      }
+    }
+
     setState(() => _saving = true);
     final req = WalkRequestModel(
       id:
@@ -102,18 +145,20 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
           DateTime.now().millisecondsSinceEpoch.toString(),
       ownerId: widget.ownerId,
       walkerId: widget.request?.walkerId,
-      dogId: _selectedDogId!, // Use selected dog ID
-      time: _selectedTime!,
+      dogId: _selectedDogId!,
+      startTime: _startTime!,
+      endTime: _endTime!,
       location: _locationController.text.trim(),
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
       status: widget.request?.status ?? WalkRequestStatus.pending,
-      duration: 30, // Default 30 minutes
-      budget: 50.0, // Default $50 budget
+      duration: durationMinutes,
+      budget: budget,
       createdAt: widget.request?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
+
     final service = WalkRequestService();
     if (widget.request == null) {
       await service.addWalkRequest(req);
@@ -126,31 +171,77 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
     }
   }
 
-  Future<void> _pickTime() async {
+  Future<void> _pickStartDateTime() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final initial = _startTime ?? now;
+
+    final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _selectedTime ?? now,
+      initialDate: initial,
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
     );
-    if (picked != null && mounted) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_selectedTime ?? now),
-      );
-      if (time != null && mounted) {
-        setState(() {
-          _selectedTime = DateTime(
-            picked.year,
-            picked.month,
-            picked.day,
-            time.hour,
-            time.minute,
-          );
-        });
-      }
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (pickedTime == null || !mounted) return;
+
+    final newStart = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    DateTime newEnd = _endTime ?? newStart.add(const Duration(minutes: 30));
+    if (!newEnd.isAfter(newStart)) {
+      newEnd = newStart.add(const Duration(minutes: 30));
     }
+
+    setState(() {
+      _startTime = newStart;
+      _endTime = newEnd;
+    });
+  }
+
+  Future<void> _pickEndDateTime() async {
+    if (_startTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a start time first')),
+      );
+      return;
+    }
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(
+        _endTime ?? _startTime!.add(const Duration(minutes: 30)),
+      ),
+    );
+    if (pickedTime == null || !mounted) return;
+
+    final end = DateTime(
+      _startTime!.year,
+      _startTime!.month,
+      _startTime!.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    if (!end.isAfter(_startTime!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('End time must be after start time')),
+      );
+      return;
+    }
+
+    setState(() {
+      _endTime = end;
+    });
   }
 
   Future<void> _handleAddDog() async {
@@ -237,10 +328,7 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
             DropdownButtonFormField<String>(
               value: _selectedDogId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.pets),
-              ),
+              decoration: const InputDecoration(border: OutlineInputBorder()),
               hint: const Text('Choose a dog for this walk'),
               items: _userDogs
                   .map(
@@ -248,27 +336,15 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
                       value: dog.id,
                       child: Row(
                         children: [
-                          Icon(Icons.pets, color: Colors.blue[600]),
+                          Icon(Icons.pets, color: Colors.blue[600], size: 20),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  dog.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  '${dog.breed} • ${dog.age} years old',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              '${dog.name} (${dog.breed}, ${dog.age}y)',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -322,11 +398,12 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
         backgroundColor: Colors.green[600],
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            child: ListView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildDogSelector(),
                 const SizedBox(height: 16),
@@ -344,19 +421,36 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
                 const SizedBox(height: 16),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+                  leading: const Icon(Icons.play_arrow),
                   title: Text(
-                    _selectedTime == null
-                        ? t.t('select_date_time')
-                        : _selectedTime.toString(),
+                    _startTime == null
+                        ? 'Select start time'
+                        : DateFormat(
+                            'MMM d, yyyy • h:mm a',
+                          ).format(_startTime!),
                   ),
-                  leading: const Icon(Icons.access_time),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: _pickTime,
-                  ),
-                  onTap: _pickTime,
+                  onTap: _pickStartDateTime,
                 ),
-                const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+                  leading: const Icon(Icons.stop),
+                  title: Text(
+                    _endTime == null
+                        ? 'Select end time'
+                        : DateFormat('MMM d, yyyy • h:mm a').format(_endTime!),
+                  ),
+                  onTap: _pickEndDateTime,
+                ),
+                if (_startTime != null && _endTime != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+                    child: Text(
+                      'Duration: ${_endTime!.difference(_startTime!).inMinutes} minutes',
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                  )
+                else
+                  const SizedBox(height: 16),
                 TextFormField(
                   controller: _notesController,
                   decoration: InputDecoration(
@@ -365,6 +459,16 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
                     border: const OutlineInputBorder(),
                   ),
                   maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _budgetController,
+                  decoration: const InputDecoration(
+                    labelText: 'Offered compensation',
+                    prefixIcon: Icon(Icons.payments),
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton.icon(

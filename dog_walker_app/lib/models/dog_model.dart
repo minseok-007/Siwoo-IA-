@@ -4,19 +4,7 @@
    and maintainability. */
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_model.dart';
-
-// Normalize temperament so matching/filter logic stays simple and type-safe.
-/// Enumeration representing a dog's temperament.
-/// Using enums reduces string typos and keeps comparisons/storage type-safe.
-enum DogTemperament { calm, friendly, energetic, shy, aggressive, reactive }
-
-// Define clear energy tiers for activity-based recommendations and pricing.
-/// Energy level (used for walk/activity matching).
-enum EnergyLevel { low, medium, high, veryHigh }
-
-// Predefine special-care scenarios to simplify branching logic.
-/// Represents special care needs; allow multiple selections via a list.
-enum SpecialNeeds { none, medication, elderly, puppy, training, socializing }
+import 'dog_traits.dart';
 
 // Centralize dog data into a domain model to decouple screens and services.
 /// Dog domain model.

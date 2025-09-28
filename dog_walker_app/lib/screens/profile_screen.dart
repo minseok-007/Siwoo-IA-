@@ -7,6 +7,7 @@ import '../models/user_model.dart';
 import '../services/auth_provider.dart';
 import 'dog_list_screen.dart';
 import '../l10n/app_localizations.dart';
+import '../models/dog_traits.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -28,6 +29,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   double _maxDistance = 10.0;
   List<int> _availableDays = [];
   List<String> _preferredTimeSlots = [];
+  List<DogTemperament> _preferredTemperaments = [];
+  List<EnergyLevel> _preferredEnergyLevels = [];
+  List<SpecialNeeds> _supportedSpecialNeeds = [];
 
   bool _saving = false;
 
@@ -44,6 +48,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _maxDistance = user.maxDistance;
       _availableDays = List<int>.from(user.availableDays);
       _preferredTimeSlots = List<String>.from(user.preferredTimeSlots);
+      _preferredTemperaments = List<DogTemperament>.from(
+        user.preferredTemperaments,
+      );
+      _preferredEnergyLevels = List<EnergyLevel>.from(
+        user.preferredEnergyLevels,
+      );
+      _supportedSpecialNeeds = List<SpecialNeeds>.from(
+        user.supportedSpecialNeeds,
+      );
     }
   }
 
@@ -70,8 +83,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 16),
                     _buildBasicInfo(user),
                     const SizedBox(height: 16),
-                    if (user.userType == UserType.dogWalker) _buildWalkerSection(),
-                    if (user.userType == UserType.dogOwner) _buildOwnerSection(context, user),
+                    if (user.userType == UserType.dogWalker)
+                      _buildWalkerSection(),
+                    if (user.userType == UserType.dogOwner)
+                      _buildOwnerSection(context, user),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
@@ -81,10 +96,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : const Icon(Icons.save),
-                        label: Text(AppLocalizations.of(context).t('save_changes')),
+                        label: Text(
+                          AppLocalizations.of(context).t('save_changes'),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal[600],
                           foregroundColor: Colors.white,
@@ -106,7 +126,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           radius: 30,
           backgroundColor: Colors.teal[100],
           child: Icon(
-            user.userType == UserType.dogOwner ? Icons.pets : Icons.directions_walk,
+            user.userType == UserType.dogOwner
+                ? Icons.pets
+                : Icons.directions_walk,
             color: Colors.teal[700],
             size: 28,
           ),
@@ -118,15 +140,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Text(
                 user.fullName,
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
-                user.userType == UserType.dogOwner ? AppLocalizations.of(context).t('dog_owner') : AppLocalizations.of(context).t('dog_walker'),
-                style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
+                user.userType == UserType.dogOwner
+                    ? AppLocalizations.of(context).t('dog_owner')
+                    : AppLocalizations.of(context).t('dog_walker'),
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey[700],
+                ),
               ),
             ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -138,7 +168,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppLocalizations.of(context).t('basic_info'), style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              AppLocalizations.of(context).t('basic_info'),
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 12),
             TextFormField(
               initialValue: _fullName,
@@ -146,7 +182,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 labelText: AppLocalizations.of(context).t('full_name'),
                 border: const OutlineInputBorder(),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? AppLocalizations.of(context).t('enter_name') : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? AppLocalizations.of(context).t('enter_name')
+                  : null,
               onSaved: (v) => _fullName = v!.trim(),
             ),
             const SizedBox(height: 12),
@@ -166,7 +204,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 labelText: AppLocalizations.of(context).t('phone_number'),
                 border: const OutlineInputBorder(),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? AppLocalizations.of(context).t('enter_phone') : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? AppLocalizations.of(context).t('enter_phone')
+                  : null,
               onSaved: (v) => _phoneNumber = v!.trim(),
             ),
           ],
@@ -182,7 +222,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppLocalizations.of(context).t('walker_details'), style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              AppLocalizations.of(context).t('walker_details'),
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 12),
             DropdownButtonFormField<ExperienceLevel>(
               value: _experienceLevel,
@@ -191,27 +237,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 border: const OutlineInputBorder(),
               ),
               items: ExperienceLevel.values
-                  .map((e) => DropdownMenuItem(value: e, child: Text(_experienceToLabel(e))))
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(_experienceToLabel(e)),
+                    ),
+                  )
                   .toList(),
-              onChanged: (v) => setState(() => _experienceLevel = v ?? ExperienceLevel.beginner),
+              onChanged: (v) => setState(
+                () => _experienceLevel = v ?? ExperienceLevel.beginner,
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(
               initialValue: _hourlyRate.toStringAsFixed(0),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 labelText: AppLocalizations.of(context).t('hourly_rate'),
                 border: const OutlineInputBorder(),
               ),
               validator: (v) {
                 final parsed = double.tryParse(v ?? '');
-                if (parsed == null || parsed < 0) return AppLocalizations.of(context).t('enter_valid_rate');
+                if (parsed == null || parsed < 0)
+                  return AppLocalizations.of(context).t('enter_valid_rate');
                 return null;
               },
               onSaved: (v) => _hourlyRate = double.tryParse(v ?? '0') ?? 0,
             ),
             const SizedBox(height: 16),
-            Text(AppLocalizations.of(context).t('preferred_dog_sizes'), style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(
+              AppLocalizations.of(context).t('preferred_dog_sizes'),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -233,7 +295,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               }).toList(),
             ),
             const SizedBox(height: 16),
-            Text('${AppLocalizations.of(context).t('max_distance_km')}: ${_maxDistance.toStringAsFixed(0)}', style: GoogleFonts.poppins(fontSize: 14)),
+            Text(
+              '${AppLocalizations.of(context).t('max_distance_km')}: ${_maxDistance.toStringAsFixed(0)}',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
             Slider(
               value: _maxDistance,
               min: 1,
@@ -243,7 +308,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onChanged: (v) => setState(() => _maxDistance = v),
             ),
             const SizedBox(height: 12),
-            Text(AppLocalizations.of(context).t('available_days'), style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(
+              AppLocalizations.of(context).t('available_days'),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -265,7 +336,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               }).toList(),
             ),
             const SizedBox(height: 12),
-            Text(AppLocalizations.of(context).t('preferred_time_slots'), style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(
+              AppLocalizations.of(context).t('preferred_time_slots'),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -286,6 +363,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 );
               }).toList(),
             ),
+            const SizedBox(height: 12),
+            Text(
+              AppLocalizations.of(context).t('preferred_temperaments'),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: DogTemperament.values.map((temp) {
+                final selected = _preferredTemperaments.contains(temp);
+                return FilterChip(
+                  label: Text(_temperamentLabel(temp)),
+                  selected: selected,
+                  onSelected: (val) {
+                    setState(() {
+                      if (val) {
+                        _preferredTemperaments.add(temp);
+                      } else {
+                        _preferredTemperaments.remove(temp);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              AppLocalizations.of(context).t('accepted_energy_levels'),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: EnergyLevel.values.map((level) {
+                final selected = _preferredEnergyLevels.contains(level);
+                return FilterChip(
+                  label: Text(_energyLabel(level)),
+                  selected: selected,
+                  onSelected: (val) {
+                    setState(() {
+                      if (val) {
+                        _preferredEnergyLevels.add(level);
+                      } else {
+                        _preferredEnergyLevels.remove(level);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              AppLocalizations.of(context).t('supported_special_needs'),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: SpecialNeeds.values.map((need) {
+                final selected = _supportedSpecialNeeds.contains(need);
+                return FilterChip(
+                  label: Text(_specialNeedLabel(need)),
+                  selected: selected,
+                  onSelected: (val) {
+                    setState(() {
+                      if (val) {
+                        _supportedSpecialNeeds.add(need);
+                      } else {
+                        _supportedSpecialNeeds.remove(need);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
           ],
         ),
       ),
@@ -299,7 +460,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppLocalizations.of(context).t('dog_owner'), style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              AppLocalizations.of(context).t('dog_owner'),
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(AppLocalizations.of(context).t('owner_manage_dogs_desc')),
             const SizedBox(height: 12),
@@ -334,20 +501,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         maxDistance: _maxDistance,
         availableDays: _availableDays,
         preferredTimeSlots: _preferredTimeSlots,
+        preferredTemperaments: _preferredTemperaments,
+        preferredEnergyLevels: _preferredEnergyLevels,
+        supportedSpecialNeeds: _supportedSpecialNeeds,
         // leave other fields as-is
       );
 
-      await Provider.of<AuthProvider>(context, listen: false).updateUserProfile(updated);
+      await Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      ).updateUserProfile(updated);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).t('profile_updated'))),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).t('profile_updated')),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${AppLocalizations.of(context).t('failed_to_save')}: $e')),
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context).t('failed_to_save')}: $e',
+            ),
+          ),
         );
       }
     } finally {
@@ -400,6 +579,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return AppLocalizations.of(context).t('evening');
       default:
         return slot;
+    }
+  }
+
+  String _temperamentLabel(DogTemperament temperament) {
+    switch (temperament) {
+      case DogTemperament.calm:
+        return AppLocalizations.of(context).t('temperament_calm');
+      case DogTemperament.friendly:
+        return AppLocalizations.of(context).t('temperament_friendly');
+      case DogTemperament.energetic:
+        return AppLocalizations.of(context).t('temperament_energetic');
+      case DogTemperament.shy:
+        return AppLocalizations.of(context).t('temperament_shy');
+      case DogTemperament.aggressive:
+        return AppLocalizations.of(context).t('temperament_aggressive');
+      case DogTemperament.reactive:
+        return AppLocalizations.of(context).t('temperament_reactive');
+    }
+  }
+
+  String _energyLabel(EnergyLevel level) {
+    switch (level) {
+      case EnergyLevel.low:
+        return AppLocalizations.of(context).t('energy_low');
+      case EnergyLevel.medium:
+        return AppLocalizations.of(context).t('energy_medium');
+      case EnergyLevel.high:
+        return AppLocalizations.of(context).t('energy_high');
+      case EnergyLevel.veryHigh:
+        return AppLocalizations.of(context).t('energy_very_high');
+    }
+  }
+
+  String _specialNeedLabel(SpecialNeeds need) {
+    switch (need) {
+      case SpecialNeeds.none:
+        return AppLocalizations.of(context).t('special_need_none');
+      case SpecialNeeds.medication:
+        return AppLocalizations.of(context).t('special_need_medication');
+      case SpecialNeeds.elderly:
+        return AppLocalizations.of(context).t('special_need_elderly');
+      case SpecialNeeds.puppy:
+        return AppLocalizations.of(context).t('special_need_puppy');
+      case SpecialNeeds.training:
+        return AppLocalizations.of(context).t('special_need_training');
+      case SpecialNeeds.socializing:
+        return AppLocalizations.of(context).t('special_need_socializing');
     }
   }
 }

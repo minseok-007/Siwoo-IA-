@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/dog_model.dart';
+import '../models/dog_traits.dart';
 import '../models/user_model.dart';
 import '../services/dog_service.dart';
 import '../l10n/app_localizations.dart';

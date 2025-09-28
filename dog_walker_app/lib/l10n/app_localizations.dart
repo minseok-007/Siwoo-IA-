@@ -11,7 +11,8 @@ class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   static const _localizedValues = <String, Map<String, String>>{
     'en': {
@@ -56,7 +57,8 @@ class AppLocalizations {
       'no_available_walks': 'No available walk requests nearby.',
       'no_accepted_walks': 'No accepted walks yet',
       'accept_walks_hint': 'Accept walk requests to see them here',
-      'no_walk_requests_yet': 'No walk requests posted yet. Tap + to post your first request!',
+      'no_walk_requests_yet':
+          'No walk requests posted yet. Tap + to post your first request!',
       'at': 'at',
       'status': 'Status',
       'user_not_authenticated': 'User not authenticated',
@@ -75,7 +77,8 @@ class AppLocalizations {
       'err_loading_chats': 'Error loading chats',
       'chats': 'Chats',
       'no_chats_yet': 'No chats yet',
-      'chats_hint': 'Chats will appear when you start conversations\nabout walk requests',
+      'chats_hint':
+          'Chats will appear when you start conversations\nabout walk requests',
       'walk_at': 'Walk at',
       'dog': 'Dog',
       'yesterday': 'Yesterday',
@@ -128,6 +131,15 @@ class AppLocalizations {
       'max_distance_km': 'Max Distance (km)',
       'available_days': 'Available Days',
       'preferred_time_slots': 'Preferred Time Slots',
+      'walker_preferences': 'Walker Preferences',
+      'preferred_temperaments': 'Preferred Temperaments',
+      'accepted_energy_levels': 'Accepted Energy Levels',
+      'supported_special_needs': 'Supported Special Needs',
+      'walker_preferences_required': 'Please fill in your walker preferences.',
+      'select_dog_sizes': 'Select at least one dog size you can handle.',
+      'select_temperaments':
+          'Select at least one temperament you are comfortable with.',
+      'select_energy_levels': 'Select at least one energy level you accept.',
       'owner_manage_dogs_desc': 'Manage your dogs and preferences.',
       'manage_dogs': 'Manage Dogs',
       'profile_updated': 'Profile updated',
@@ -138,6 +150,22 @@ class AppLocalizations {
       'small': 'Small',
       'medium': 'Medium',
       'large': 'Large',
+      'temperament_calm': 'Calm',
+      'temperament_friendly': 'Friendly',
+      'temperament_energetic': 'Energetic',
+      'temperament_shy': 'Shy',
+      'temperament_aggressive': 'Aggressive',
+      'temperament_reactive': 'Reactive',
+      'energy_low': 'Low',
+      'energy_medium': 'Medium',
+      'energy_high': 'High',
+      'energy_very_high': 'Very High',
+      'special_need_none': 'None',
+      'special_need_medication': 'Medication',
+      'special_need_elderly': 'Elderly Care',
+      'special_need_puppy': 'Puppy Care',
+      'special_need_training': 'Training Support',
+      'special_need_socializing': 'Socializing',
       'sun': 'Sun',
       'mon': 'Mon',
       'tue': 'Tue',
@@ -195,7 +223,8 @@ class AppLocalizations {
       'err_email_invalid': 'Please enter a valid email address',
       'err_password_required': 'Password is required',
       'err_password_min': 'Password must be at least 6 characters long',
-      'err_password_combo': 'Password must contain uppercase, lowercase, and numbers',
+      'err_password_combo':
+          'Password must contain uppercase, lowercase, and numbers',
       'err_confirm_required': 'Please confirm your password',
       'err_password_mismatch': 'Passwords do not match',
       'err_fullname_required': 'Full name is required',
@@ -424,7 +453,8 @@ class AppLocalizations {
   }
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -436,5 +466,6 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool shouldReload(covariant LocalizationsDelegate<AppLocalizations> old) => false;
+  bool shouldReload(covariant LocalizationsDelegate<AppLocalizations> old) =>
+      false;
 }
