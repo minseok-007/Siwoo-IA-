@@ -2,21 +2,16 @@
 
 ## Table of Contents
 1. Project Overview  
-2. Development Environment and Tooling  
-3. Solution Architecture Overview  
-4. Authentication and Role Provisioning  
-5. Data Modeling and Firestore Integration  
-6. Dog Profiling and Preference Capture  
-7. Walk Request Lifecycle  
-8. Intelligent Matching Algorithms  
-9. Real-Time Messaging and Collaboration  
-10. Validation and Error Handling  
-11. Performance Optimization  
-12. Code Quality and Maintainability  
-13. Testing and Debugging  
-14. Screenshots and Artefacts  
-15. Sources and Acknowledgements  
-16. Conclusion
+2. Solution Architecture Overview  
+3. Authentication and Role Provisioning  
+4. Data Modeling and Firestore Integration  
+5. Dog Profiling and Preference Capture  
+6. Walk Request Lifecycle  
+7. Intelligent Matching Algorithms  
+8. Real-Time Messaging and Collaboration  
+9. Validation and Error Handling  
+10. Code Quality and Maintainability  
+
 
 ---
 
@@ -32,12 +27,7 @@ PawPal is a Flutter + Firebase platform that connects dog owners with profession
 
 ---
 
-## 2. Development Environment and Tooling
-The application is written in Dart using Flutter 3 for cross-platform UI, chosen for its mature widget catalog and hot-reload workflow that accelerates iterative prototyping demanded by Criterion A’s user stories. Firebase provides managed backend services: Firebase Authentication secures sign-in flows, Cloud Firestore offers scalable document storage with real-time listeners, and Firebase Cloud Storage (planned) handles media assets. These tools are adequate because they remove server maintenance overhead, provide built-in security rules, and integrate seamlessly with Flutter via first-party SDKs—crucial for a student project with limited deployment infrastructure.
-
-Supporting packages include `provider` for dependency injection and reactive state propagation, `cloud_firestore` and `firebase_auth` for typed database/auth access, and `google_fonts` for consistent typography. Each package is open-source, well-documented, and aligned with school network policies. Development occurs in Android Studio with Flutter tooling, Git for version control, and the Firebase Emulator Suite for safe local testing, ensuring that experimentation never compromises production data. Firestore security rules restrict each user to their own documents (owners to their dogs/requests, walkers to assigned jobs), providing an adequate security posture without building custom servers. This toolchain delivers the reliability and velocity needed to meet Criterion B success criteria around responsiveness and real-time updates. Deployment-ready builds can be published either to Firebase Hosting (for Flutter Web) or packaged for the iOS/Android app stores using the same CLI, ensuring the infrastructure scales beyond the classroom demo.
-
-## 3. Solution Architecture Overview
+## 2. Solution Architecture Overview
 The final product is organised into three cooperating layers that mirror the scenario outlined in Criteria A and B:
 
 - **Presentation layer (Flutter widgets).** Screens such as `SignupScreen`, `HomeScreen`, and `ChatScreen` render dynamic UI based on Provider state. Responsive layouts (see `lib/widgets/responsive_layout.dart`) and theming deliver a consistent experience on tablets and phones while showcasing the required user interface techniques.
@@ -48,7 +38,7 @@ Architecture decisions directly reflect Criterion A requirements: owners must ma
 
 ---
 
-## 4. Authentication and Role Provisioning
+## 3. Authentication and Role Provisioning
 The user journey begins with registration. `SignupScreen` collects credentials, personal details, and a mandatory role selection. Choosing the walker role dynamically reveals additional preference controls, enforced through client-side validation before any Firebase calls.
 
 **Code reference – `lib/screens/signup_screen.dart`:**
@@ -92,7 +82,7 @@ Once authenticated, `AuthWrapper` and `HomeScreen` (see `lib/screens/home_screen
 
 ---
 
-## 5. Data Modeling and Firestore Integration
+## 4. Data Modeling and Firestore Integration
 Domain models are immutable Dart classes with enum-backed fields, giving compile-time guarantees across the app. Firestore mappings are handled by each model so serialization stays close to business logic.
 
 **Rationale.** Treating models as immutable value objects removes side effects during widget rebuilds and keeps Provider-driven state predictable. Enum-backed fields constrain categories such as roles, dog sizes, or request statuses, so business rules cannot be broken through string typos. By co-locating `toFirestore`/`fromFirestore` methods with each model, schema adjustments happen in a single place, ensuring that matching, scheduling, and messaging features all consume consistent data representations.
@@ -122,7 +112,7 @@ class MessageModel {
 
 ---
 
-## 6. Dog Profiling and Preference Capture
+## 5. Dog Profiling and Preference Capture
 Owners curate dog profiles through forms backed by `DogService`, ensuring Firestore writes are centralized and reusable. Captured traits directly influence matching and scheduling decisions.
 
 **Rationale.** Detailed dog metadata feeds multiple functional surfaces: temperament and energy levels calibrate the weighted matching score, medical conditions trigger warnings for incompatible walkers, and boolean comfort flags populate the walk detail banner so expectations are clear before acceptance. Centralizing persistence inside `DogService` lets the owner dashboard, walker previews, and analytics reuse the same queries, eliminating discrepancies between screens.
@@ -148,7 +138,7 @@ When walkers sign up, preference pickers capture acceptable dog sizes, temperame
 
 ---
 
-## 7. Walk Request Lifecycle
+## 6. Walk Request Lifecycle
 After onboarding, an owner uses `HomeScreen` to launch `WalkRequestFormScreen`, selecting a dog, timeframe, location, budget, and notes. The form serializes to a `WalkRequestModel` and persists through `WalkRequestService.addWalkRequest`, automatically stamping Firestore creation metadata.
 
 Walkers browse pending requests, inspect details, and accept assignments. The acceptance path enforces authentication, updates Firestore, and returns feedback to both parties.
@@ -182,10 +172,10 @@ Status transitions (`pending → accepted → completed` or `cancelled`) are enc
 
 ---
 
-## 8. Intelligent Matching Algorithms
+## 7. Intelligent Matching Algorithms
 Matching combines multiple algorithms to evaluate compatibility and optionally compute global optima when pairing many walkers with many requests. This subsystem showcases algorithmic thinking by decomposing the assignment challenge into measurable factors, weighting them, and applying optimisation routines to produce explainable, high-quality matches.
 
-### 8.1 Haversine Distance Calculation
+### 7.1 Haversine Distance Calculation
 **Purpose.** Compute the great-circle distance between two latitude/longitude points.  
 **Complexity.** O(1) time, O(1) space.
 
@@ -207,7 +197,7 @@ static double calculateDistance(GeoPoint point1, GeoPoint point2) {
 }
 ```
 
-### 8.2 Weighted Matching Score
+### 7.2 Weighted Matching Score
 **Purpose.** Produce a composite score covering distance, dog attributes, schedule, experience, rating, and price.  
 **Complexity.** O(n) per request where *n* is candidate walkers; O(n) space for results.
 
@@ -254,7 +244,7 @@ static double _calculateOverallMatchScore(
 }
 ```
 
-### 8.3 Hungarian Algorithm
+### 7.3 Hungarian Algorithm
 **Purpose.** Create an optimal one-to-one assignment between walkers and walk requests.  
 **Complexity.** O(n³) time, O(n²) space due to the cost matrix.
 
@@ -273,7 +263,7 @@ static List<int> _hungarianAlgorithm(List<List<double>> costMatrix) {
 }
 ```
 
-### 8.4 Exponential Distance Decay
+### 7.4 Exponential Distance Decay
 **Purpose.** Reward closer matches while avoiding harsh cut-offs.  
 **Complexity.** O(1) time, O(1) space.
 
@@ -292,7 +282,7 @@ Threshold filtering (score > 0.3) and capped result sets ensure only high-qualit
 
 ---
 
-## 9. Real-Time Messaging and Collaboration
+## 8. Real-Time Messaging and Collaboration
 Once a walk is accepted, both parties communicate through a Firestore-backed chat. Each walk owns a chat document with a `messages` subcollection, ensuring minimal read/write contention.
 
 **Code reference – `lib/services/message_service.dart`:**
@@ -352,7 +342,7 @@ Outbound messages reuse the same service, clear the composer, and animate the sc
 
 ---
 
-## 10. Validation and Error Handling
+## 9. Validation and Error Handling
 Client-side validation complements Firestore’s flexible schema. Forms use `GlobalKey<FormState>` with custom validators to prevent malformed entries and to tailor requirements for walker sign-ups.
 
 **Code reference – `lib/utils/validators.dart`:**
@@ -375,7 +365,7 @@ Services wrap Firestore calls in try/catch blocks, mapping provider errors to us
 
 ---
 
-## 11. Code Quality and Maintainability
+## 10. Code Quality and Maintainability
 Separation of concerns guides the project structure. Services encapsulate Firebase access, models describe domain entities, and widgets consume streams or futures without retaining business logic. This improves readability and supports independent testing of each layer.
 
 **Code reference – `lib/services/auth_service.dart`:**
