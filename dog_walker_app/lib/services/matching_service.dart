@@ -17,7 +17,6 @@ class MatchingService {
     'schedule': 0.15,
     'experience': 0.12,
     'rating': 0.08,
-    'price': 0.07,
     'temperament': 0.10,
     'energy': 0.07,
     'specialNeeds': 0.08,
@@ -165,21 +164,6 @@ class MatchingService {
     return (rating / 5.0).clamp(0.0, 1.0);
   }
 
-  /// Price compatibility score.
-  /// Time Complexity: O(1)
-  static double calculatePriceScore(
-    double walkerRate,
-    double ownerBudget,
-    double walkDuration,
-  ) {
-    final totalCost = walkerRate * walkDuration;
-
-    if (totalCost <= ownerBudget) return 1.0; // Within budget
-    if (totalCost <= ownerBudget * 1.2) return 0.7; // Slightly over budget
-    if (totalCost <= ownerBudget * 1.5) return 0.4; // Moderately over budget
-    return 0.0; // Way over budget
-  }
-
   /// Temperament compatibility based on walker comfort levels.
   static double calculateTemperamentScore(
     List<DogTemperament> walkerPreferences,
@@ -308,13 +292,6 @@ class MatchingService {
     );
     final ratingScore = calculateRatingScore(walker.rating);
 
-    final walkDurationHours =
-        (walkRequest.duration > 0 ? walkRequest.duration : 30) / 60.0;
-    final priceScore = calculatePriceScore(
-      walker.hourlyRate,
-      walkRequest.budget ?? 50.0,
-      walkDurationHours,
-    );
     final temperamentScore = calculateTemperamentScore(
       walker.preferredTemperaments,
       dog.temperament,
@@ -337,7 +314,6 @@ class MatchingService {
     totalScore += scheduleScore * _matchingWeights['schedule']!;
     totalScore += experienceScore * _matchingWeights['experience']!;
     totalScore += ratingScore * _matchingWeights['rating']!;
-    totalScore += priceScore * _matchingWeights['price']!;
     totalScore += temperamentScore * _matchingWeights['temperament']!;
     totalScore += energyScore * _matchingWeights['energy']!;
     totalScore += specialNeedsScore * _matchingWeights['specialNeeds']!;
@@ -369,11 +345,6 @@ class MatchingService {
       ),
       'experience': calculateExperienceScore(walker.experienceLevel, dog),
       'rating': calculateRatingScore(walker.rating),
-      'price': calculatePriceScore(
-        walker.hourlyRate,
-        walkRequest.budget ?? 50.0,
-        (walkRequest.duration > 0 ? walkRequest.duration : 30) / 60.0,
-      ),
       'temperament': calculateTemperamentScore(
         walker.preferredTemperaments,
         dog.temperament,

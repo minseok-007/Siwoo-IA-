@@ -77,7 +77,6 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
   double _maxDistance = 20.0; // Maximum distance in kilometers
   List<DogSize> _preferredDogSizes = []; // Preferred dog sizes
   List<ExperienceLevel> _experienceLevels = []; // Preferred experience levels
-  double _maxPrice = 100.0; // Maximum hourly rate
 
   // Current user context data
   UserModel? _currentUser; // Currently authenticated user
@@ -168,7 +167,6 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
             duration: 30,
             notes: AppLocalizations.of(context).t('sample_walk_request_note'),
             status: WalkRequestStatus.pending,
-            budget: 50.0,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );
@@ -231,7 +229,6 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
       }
 
       // Price filter
-      if (match.walker.hourlyRate > _maxPrice) return false;
 
       return true;
     }).toList();
@@ -450,13 +447,6 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      '\$${match.walker.hourlyRate}/hr',
-                      style: TextStyle(
-                        color: Colors.green[600],
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                   ],
                 ),
               ],
@@ -588,16 +578,6 @@ class _SmartMatchingScreenState extends State<SmartMatchingScreen> {
                   setState(() => _maxDistance = value);
                 },
               ),
-              _buildFilterSlider(
-                AppLocalizations.of(context).t('max_price'),
-                _maxPrice,
-                10.0,
-                200.0,
-                (value) {
-                  setState(() => _maxPrice = value);
-                },
-              ),
-              const SizedBox(height: 16),
               _buildFilterChips(
                 AppLocalizations.of(context).t('dog_sizes'),
                 DogSize.values,

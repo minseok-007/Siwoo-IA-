@@ -7,7 +7,12 @@ import '../services/auth_provider.dart';
 import '../services/user_service.dart';
 import '../services/dog_service.dart';
 import '../models/dog_model.dart';
+import '../models/message_model.dart';
 import 'chat_screen.dart';
+import 'review_form_screen.dart';
+import '../services/review_service.dart';
+import '../services/notification_service.dart';
+import '../services/message_service.dart';
 import '../l10n/app_localizations.dart';
 
 /// Walk-request detail screen.
@@ -32,14 +37,20 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
   final WalkRequestService _service = WalkRequestService();
   final UserService _userService = UserService();
   final DogService _dogService = DogService();
+  final ReviewService _reviewService = ReviewService();
+  final NotificationService _notificationService = NotificationService();
+  final MessageService _messageService = MessageService();
   DogModel? _dog;
   bool _loadingDog = true;
+  bool _hasLeftReview = false;
+  bool _checkingReview = false;
 
   @override
   void initState() {
     super.initState();
     _request = widget.request;
     _loadDog();
+    _checkHasLeftReview();
   }
 
   Future<void> _loadDog() async {
@@ -58,11 +69,30 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     }
   }
 
+  Future<void> _checkHasLeftReview() async {
+    if (!mounted) return;
+    setState(() => _checkingReview = true);
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final reviewerId = auth.currentUserId;
+      if (reviewerId == null) return;
+      final exists = await _reviewService.hasReview(
+        reviewerId: reviewerId,
+        walkId: _request.id,
+      );
+      if (!mounted) return;
+      setState(() => _hasLeftReview = exists);
+    } finally {
+      if (mounted) setState(() => _checkingReview = false);
+    }
+  }
+
   Future<void> _acceptRequest() async {
     setState(() => _processing = true);
 
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    if (user == null) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = auth.currentUserId;
+    if (currentUserId == null) {
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -77,7 +107,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     try {
       final updated = _request.copyWith(
         status: WalkRequestStatus.accepted,
-        walkerId: user.uid,
+        walkerId: currentUserId,
       );
       await _service.updateWalkRequest(updated);
       setState(() {
@@ -99,6 +129,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
 
   Future<void> _cancelRequest() async {
     setState(() => _processing = true);
+    final previousWalkerId = _request.walkerId;
     try {
       final updated = _request.copyWith(status: WalkRequestStatus.cancelled);
       await _service.updateWalkRequest(updated);
@@ -106,6 +137,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
         _request = updated;
         _processing = false;
       });
+      await _notifyCancellation(previousWalkerId);
       Navigator.pop(context, true);
     } catch (e) {
       setState(() => _processing = false);
@@ -120,23 +152,265 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
   }
 
   Future<void> _rescheduleRequest() async {
-    // TODO: Implement rescheduling logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.of(context).t('reschedule_not_implemented'),
+    if (_processing) return;
+
+    final t = AppLocalizations.of(context);
+    final newStart = await _pickDateTime(
+      initial: _request.startTime,
+      minDate: DateTime.now(),
+    );
+    if (newStart == null) return;
+
+    final newEnd = await _pickDateTime(
+      initial: _request.endTime,
+      minDate: newStart,
+    );
+    if (newEnd == null) return;
+
+    if (!newEnd.isAfter(newStart)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.t('invalid_end_time'))),
+      );
+      return;
+    }
+
+    final durationMinutes = newEnd.difference(newStart).inMinutes;
+    final previousWalkerId = _request.walkerId;
+
+    setState(() => _processing = true);
+    try {
+      final updated = _request.copyWith(
+        startTime: newStart,
+        endTime: newEnd,
+        duration: durationMinutes,
+        updatedAt: DateTime.now(),
+      );
+      await _service.updateWalkRequest(updated);
+      if (!mounted) return;
+      setState(() {
+        _request = updated;
+        _processing = false;
+      });
+
+      await _notifyReschedule(previousWalkerId, newStart, newEnd);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            t.t('reschedule_success'),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _processing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${t.t('err_loading_requests')}: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _markCompleted() async {
+    setState(() => _processing = true);
+    try {
+      final updated = _request.copyWith(status: WalkRequestStatus.completed);
+      await _service.updateWalkRequest(updated);
+      setState(() {
+        _request = updated;
+        _processing = false;
+      });
+      await _promptReviewIfNeeded();
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      setState(() => _processing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error completing walk: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _promptReviewIfNeeded() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final reviewerId = auth.currentUserId;
+    if (reviewerId == null) return;
+
+    // If already reviewed this walk, do nothing
+    final already = await _reviewService.hasReview(
+      reviewerId: reviewerId,
+      walkId: _request.id,
+    );
+    if (already) return;
+
+    // Determine the other participant to review
+    String? revieweeId;
+    if (widget.isWalker) {
+      revieweeId = _request.ownerId;
+    } else {
+      revieweeId = _request.walkerId;
+    }
+    if (revieweeId == null || revieweeId.isEmpty) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReviewFormScreen(
+          reviewerId: reviewerId,
+          revieweeId: revieweeId!,
+          walkId: _request.id,
         ),
       ),
     );
+    await _checkHasLeftReview();
+  }
+
+  Future<DateTime?> _pickDateTime({
+    required DateTime initial,
+    DateTime? minDate,
+  }) async {
+    final initialDate = DateTime(
+      initial.year,
+      initial.month,
+      initial.day,
+      initial.hour,
+      initial.minute,
+    );
+
+    final firstDate = minDate ?? DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initialDate.isBefore(firstDate) ? firstDate : initialDate,
+      firstDate: firstDate,
+      lastDate: firstDate.add(const Duration(days: 365)),
+    );
+    if (date == null) return null;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initialDate),
+    );
+    if (time == null) return null;
+
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  Future<void> _notifyCancellation(String? walkerId) async {
+    if (walkerId == null || walkerId.isEmpty) return;
+    final t = AppLocalizations.of(context);
+    final actorId = Provider.of<AuthProvider>(context, listen: false).currentUserId;
+    if (actorId == null) return;
+    final body =
+        '${t.t('walk_request')} ${t.t('at')} ${_request.location} ${t.t('has_been_cancelled')}';
+    await _notificationService.sendNotification(
+      userId: walkerId,
+      title: t.t('walk_request'),
+      body: body,
+      relatedId: _request.id,
+      type: 'cancellation',
+      createdBy: actorId,
+    );
+    await _sendSystemMessage(
+      walkerId: walkerId,
+      text: body,
+    );
+  }
+
+  Future<void> _notifyReschedule(
+    String? walkerId,
+    DateTime newStart,
+    DateTime newEnd,
+  ) async {
+    if (walkerId == null || walkerId.isEmpty) return;
+    final t = AppLocalizations.of(context);
+    final actorId = Provider.of<AuthProvider>(context, listen: false).currentUserId;
+    if (actorId == null) return;
+    final formattedStart = DateFormat('MMM d, h:mm a').format(newStart);
+    final formattedEnd = DateFormat('MMM d, h:mm a').format(newEnd);
+    final body = t
+        .t('reschedule_notification_body')
+        .replaceFirst('%s1', formattedStart)
+        .replaceFirst('%s2', formattedEnd);
+
+    await _notificationService.sendNotification(
+      userId: walkerId,
+      title: t.t('reschedule'),
+      body: body,
+      relatedId: _request.id,
+      type: 'reschedule',
+      createdBy: actorId,
+    );
+    await _sendSystemMessage(
+      walkerId: walkerId,
+      text: body,
+    );
+  }
+
+  Future<void> _sendSystemMessage({
+    required String walkerId,
+    required String text,
+  }) async {
+    final chatId = _buildChatId(walkerId);
+    await _messageService.initializeChat(
+      chatId,
+      ownerId: _request.ownerId,
+      walkerId: walkerId,
+    );
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final senderId = auth.currentUserId ?? 'system';
+    final message = MessageModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      chatId: chatId,
+      senderId: senderId,
+      text: text,
+      timestamp: DateTime.now(),
+    );
+    await _messageService.sendMessage(message);
+  }
+
+  String _buildChatId(String? walkerId) {
+    return 'walk_${_request.id}_${_request.ownerId}_${walkerId ?? ''}';
   }
 
   Future<void> _startChat() async {
     try {
-      String otherUserId;
+      final authProvider =
+          Provider.of<AuthProvider>(context, listen: false);
+      final currentUserId = authProvider.currentUserId;
+      if (currentUserId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).t('user_not_authenticated'),
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Resolve participants for the chat
+      String? walkerId = _request.walkerId;
+      late String otherUserId;
+
       if (widget.isWalker) {
+        // Walkers can reach out even before accepting; fall back to their own ID.
+        walkerId = walkerId?.isNotEmpty == true ? walkerId : currentUserId;
         otherUserId = _request.ownerId;
       } else {
-        otherUserId = _request.walkerId!;
+        otherUserId = walkerId ?? '';
+      }
+
+      if (otherUserId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).t('user_not_found')),
+          ),
+        );
+        return;
       }
 
       final otherUser = await _userService.getUserById(otherUserId);
@@ -149,20 +423,16 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
         return;
       }
 
-      final user = Provider.of<AuthProvider>(context, listen: false).user;
-      if (user == null) return;
-
-      // Create a unique chat ID based on walk request and participants
-      final chatId =
-          'walk_${_request.id}_${_request.ownerId}_${_request.walkerId}';
+      final chatId = _buildChatId(walkerId);
 
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ChatScreen(
             chatId: chatId,
-            userId: user.uid,
+            userId: currentUserId,
             otherUserName: otherUser.fullName,
+            otherUserId: otherUser.id,
             walkRequest: _request,
           ),
         ),
@@ -264,11 +534,6 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Compensation: ${_request.budget != null ? "\$${_request.budget!.toStringAsFixed(0)}" : '-'}',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Text(
               '${t.t('status')}: ${_request.status.toString().split(".").last}',
               style: const TextStyle(fontSize: 16),
             ),
@@ -280,8 +545,8 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                   // Action buttons row
                   Row(
                     children: [
-                      if (widget.isWalker &&
-                          _request.status == WalkRequestStatus.pending)
+                      if (_request.status == WalkRequestStatus.pending &&
+                          widget.isWalker)
                         Expanded(
                           child: ElevatedButton(
                             onPressed: _acceptRequest,
@@ -291,8 +556,9 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                             child: Text(t.t('accept')),
                           ),
                         ),
-                      if (!widget.isWalker &&
-                          _request.status == WalkRequestStatus.pending)
+                      if ((_request.status == WalkRequestStatus.pending &&
+                              !widget.isWalker) ||
+                          (_request.status == WalkRequestStatus.accepted))
                         Expanded(
                           child: ElevatedButton(
                             onPressed: _cancelRequest,
@@ -302,6 +568,9 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                             child: Text(t.t('cancel')),
                           ),
                         ),
+                      if (!widget.isWalker &&
+                          _request.status == WalkRequestStatus.accepted)
+                        const SizedBox(width: 12),
                       if (!widget.isWalker &&
                           _request.status == WalkRequestStatus.accepted)
                         Expanded(
@@ -316,8 +585,28 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                     ],
                   ),
 
-                  // Chat button for accepted walks
+                  // Mark complete when in accepted state (both roles)
                   if (_request.status == WalkRequestStatus.accepted) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _markCompleted,
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: Text(t.t('mark_complete')),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.green[700],
+                          side: BorderSide(color: Colors.green[700]!),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // Chat button: walkers can reach out while pending; both roles once accepted.
+                  if (_request.status == WalkRequestStatus.accepted ||
+                      (widget.isWalker &&
+                          _request.status == WalkRequestStatus.pending)) ...[
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -331,6 +620,23 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.indigo[600],
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // Leave a review after completion if not yet reviewed
+                  if (_request.status == WalkRequestStatus.completed && !_hasLeftReview) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _promptReviewIfNeeded,
+                        icon: const Icon(Icons.rate_review_outlined),
+                        label: Text(t.t('leave_a_review')),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber[700],
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),

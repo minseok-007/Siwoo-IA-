@@ -108,15 +108,24 @@ flutter build web \
 
 Tip: Alternatively, you can run `flutterfire configure` to generate `lib/firebase_options.dart` and replace the web initialization with `DefaultFirebaseOptions.currentPlatform`. The current setup uses `--dart-define` to avoid committing secrets.
 
-## Security Rules (Optional)
-In Firestore Console → Rules:
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-``` 
+## Security Rules (Required)
+Deploy the hardened Firestore rules in `../firestore.rules` after tailoring them to your needs:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+The rules enforce that:
+- only the owner can modify their user profile or device tokens;
+- walk requests are visible to participating owners/walkers;
+- chat messages are restricted to the two participants;
+- notifications/reviews are scoped to the relevant walk.
+
+## Push Notifications & Cloud Messaging
+
+1. Enable Cloud Messaging in the Firebase console (Project settings → Cloud Messaging) and upload the APNs key for iOS. In Xcode, turn on the Push Notifications and Background Modes → Remote notifications capabilities for the Runner target.
+2. For Android 13+, the app will request the runtime POST_NOTIFICATIONS permission automatically.
+3. Web builds require a VAPID key: pass it via `--dart-define=FIREBASE_VAPID_KEY=...` and update `web/firebase-messaging-sw.js` with your Firebase config.
+4. Deploy the sample Firebase Functions under `cloud_functions/` to translate notification documents and chat messages into FCM pushes.
+
+Tokens are stored in Firestore under `users/{userId}/deviceTokens/{token}`. The client writes notification intents to the `notifications` collection when chats, cancellations, or reschedules occur, so backend code can fan out real push alerts to both walkers and owners.

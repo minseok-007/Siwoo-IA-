@@ -32,7 +32,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
   // Walker preference fields
   ExperienceLevel _experienceLevel = ExperienceLevel.beginner;
-  double _hourlyRate = 25;
   double _maxDistance = 10;
   List<DogSize> _preferredDogSizes = [];
   List<int> _availableDays = [];
@@ -82,7 +81,6 @@ class _SignupScreenState extends State<SignupScreen> {
       phoneNumber: _phoneController.text.trim(),
       userType: _selectedUserType,
       experienceLevel: _experienceLevel,
-      hourlyRate: _hourlyRate,
       maxDistance: _maxDistance,
       preferredDogSizes: _preferredDogSizes,
       availableDays: _availableDays,
@@ -454,18 +452,6 @@ class _SignupScreenState extends State<SignupScreen> {
               onChanged: (value) => setState(
                 () => _experienceLevel = value ?? ExperienceLevel.beginner,
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '${t.t('hourly_rate')} (4${_hourlyRate.toStringAsFixed(0)}/hr)',
-            ),
-            Slider(
-              value: _hourlyRate,
-              min: 10,
-              max: 80,
-              divisions: 70,
-              label: _hourlyRate.toStringAsFixed(0),
-              onChanged: (value) => setState(() => _hourlyRate = value),
             ),
             const SizedBox(height: 12),
             Text(

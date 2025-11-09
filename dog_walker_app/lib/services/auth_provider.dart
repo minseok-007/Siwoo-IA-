@@ -3,12 +3,14 @@ import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../models/dog_traits.dart';
 import 'auth_service.dart';
+import 'messaging_service.dart';
 
 /// ChangeNotifier that manages authentication state across the app.
 /// - Subscribes to FirebaseAuth's `authStateChanges` stream to capture logins, logouts, and profile updates.
 /// - Bridges the AuthService and UI layers, encapsulating async handling and error states.
 class AuthProvider with ChangeNotifier {
-  final AuthService _authService = AuthService();
+  final AuthService _authService;
+  final MessagingService _messagingService = MessagingService.instance;
   User? _user;
   UserModel? _userModel;
   bool _isLoading = false;
@@ -20,9 +22,17 @@ class AuthProvider with ChangeNotifier {
   String? get error => _error;
   bool get isAuthenticated => _user != null;
 
-  AuthProvider() {
-    // Subscribe immediately so we keep auth state in sync in real time.
-    _init();
+  /// Convenience accessor for the current user's identifier.
+  /// Falls back to the `UserModel` when Firebase's `User` is unavailable
+  /// (e.g., in widget tests where only profile data is injected).
+  String? get currentUserId => _user?.uid ?? _userModel?.id;
+
+  AuthProvider({AuthService? authService, bool listenAuthChanges = true})
+      : _authService = authService ?? AuthService() {
+    if (listenAuthChanges) {
+      // Subscribe immediately so we keep auth state in sync in real time.
+      _init();
+    }
   }
 
   /// Listens to the Firebase auth stream and loads the user document.
@@ -33,6 +43,7 @@ class AuthProvider with ChangeNotifier {
         _loadUserData(user.uid);
       } else {
         _userModel = null;
+        _messagingService.clearUser();
       }
       notifyListeners();
     });
@@ -42,6 +53,9 @@ class AuthProvider with ChangeNotifier {
   Future<void> _loadUserData(String userId) async {
     try {
       _userModel = await _authService.getUserData(userId);
+      if (_userModel != null) {
+        await _messagingService.initializeForUser(_userModel!.id);
+      }
       notifyListeners();
     } catch (e) {
       _error = e.toString();
@@ -57,7 +71,6 @@ class AuthProvider with ChangeNotifier {
     required String phoneNumber,
     required UserType userType,
     ExperienceLevel experienceLevel = ExperienceLevel.beginner,
-    double hourlyRate = 0.0,
     double maxDistance = 10.0,
     List<DogSize> preferredDogSizes = const [],
     List<int> availableDays = const [],
@@ -83,7 +96,6 @@ class AuthProvider with ChangeNotifier {
       if (userType == UserType.dogWalker && _userModel != null) {
         final updatedModel = _userModel!.copyWith(
           experienceLevel: experienceLevel,
-          hourlyRate: hourlyRate,
           maxDistance: maxDistance,
           preferredDogSizes: preferredDogSizes,
           availableDays: availableDays,
@@ -94,6 +106,7 @@ class AuthProvider with ChangeNotifier {
         );
         await _authService.updateUserData(updatedModel);
         _userModel = updatedModel;
+        await _messagingService.initializeForUser(updatedModel.id);
       }
       _setLoading(false);
       return true;
@@ -132,6 +145,7 @@ class AuthProvider with ChangeNotifier {
       await _authService.signOut();
       _user = null;
       _userModel = null;
+      await _messagingService.clearUser();
     } catch (e) {
       _setError(e.toString());
     } finally {
@@ -188,5 +202,13 @@ class AuthProvider with ChangeNotifier {
 
   void clearError() {
     _clearError();
+  }
+
+  /// Testing helper to inject auth state without relying on Firebase streams.
+  @visibleForTesting
+  void debugSetAuthState({User? user, UserModel? userModel}) {
+    _user = user;
+    _userModel = userModel;
+    notifyListeners();
   }
 }

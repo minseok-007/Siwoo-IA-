@@ -23,7 +23,6 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _locationController = TextEditingController();
   final _notesController = TextEditingController();
-  final _budgetController = TextEditingController();
   final DogService _dogService = DogService();
 
   DateTime? _startTime;
@@ -42,9 +41,6 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
       _notesController.text = widget.request!.notes ?? '';
       _startTime = widget.request!.startTime;
       _endTime = widget.request!.endTime;
-      if (widget.request!.budget != null) {
-        _budgetController.text = widget.request!.budget!.toStringAsFixed(0);
-      }
       _selectedDogId = widget.request!.dogId;
     }
   }
@@ -86,7 +82,6 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
   void dispose() {
     _locationController.dispose();
     _notesController.dispose();
-    _budgetController.dispose();
     super.dispose();
   }
 
@@ -127,17 +122,6 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
       return;
     }
 
-    double? budget;
-    if (_budgetController.text.trim().isNotEmpty) {
-      budget = double.tryParse(_budgetController.text.trim());
-      if (budget == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter a valid compensation amount')),
-        );
-        return;
-      }
-    }
-
     setState(() => _saving = true);
     final req = WalkRequestModel(
       id:
@@ -154,7 +138,6 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
           : _notesController.text.trim(),
       status: widget.request?.status ?? WalkRequestStatus.pending,
       duration: durationMinutes,
-      budget: budget,
       createdAt: widget.request?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -461,16 +444,7 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _budgetController,
-                  decoration: const InputDecoration(
-                    labelText: 'Offered compensation',
-                    prefixIcon: Icon(Icons.payments),
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: _saving ? null : _saveRequest,
                   icon: _saving

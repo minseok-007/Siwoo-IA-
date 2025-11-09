@@ -28,9 +28,10 @@ class _DogListScreenState extends State<DogListScreen> {
 
   Future<void> _fetchDogs() async {
     setState(() => _loading = true);
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    if (user != null) {
-      final dogs = await _dogService.getDogsByOwner(user.uid);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final ownerId = auth.currentUserId;
+    if (ownerId != null) {
+      final dogs = await _dogService.getDogsByOwner(ownerId);
       setState(() {
         _dogs = dogs;
         _loading = false;
@@ -39,11 +40,12 @@ class _DogListScreenState extends State<DogListScreen> {
   }
 
   void _onAddDog() async {
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    if (user == null) return;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final ownerId = auth.currentUserId;
+    if (ownerId == null) return;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => EditDogScreen(ownerId: user.uid)),
+      MaterialPageRoute(builder: (context) => EditDogScreen(ownerId: ownerId)),
     );
     if (result != null) _fetchDogs();
   }

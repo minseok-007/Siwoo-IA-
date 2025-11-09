@@ -33,7 +33,10 @@ class _ReviewFormScreenState extends State<ReviewFormScreen> {
       comment: _commentController.text.trim(),
       timestamp: DateTime.now(),
     );
-    await ReviewService().addReview(review);
+    final service = ReviewService();
+    await service.addReview(review);
+    // Update the reviewee's average rating after a new review
+    await service.updateUserAverageRating(widget.revieweeId);
     setState(() => _saving = false);
     Navigator.pop(context, true);
   }

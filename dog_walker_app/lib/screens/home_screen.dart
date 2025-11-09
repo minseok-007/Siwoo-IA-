@@ -275,20 +275,7 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 12),
-                  _buildActionCard(
-                    context,
-                    t.t('earnings'),
-                    t.t('earnings_desc'),
-                    Icons.attach_money,
-                    Colors.amber,
-                    () {
-                      // Placeholder for earnings screen
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(t.t('earnings_coming_soon'))),
-                      );
-                    },
-                  ),
+                  // Earnings feature removed per request
                 ],
 
                 const SizedBox(height: 24),

@@ -35,7 +35,6 @@ class UserModel {
   final List<DogSize> preferredDogSizes; // Sizes a walker prefers
   final List<DogSize> dogSizes; // Sizes of the owner's dogs
   final ExperienceLevel experienceLevel; // Walker experience level
-  final double hourlyRate; // Walker hourly rate (currency shown in UI)
   final List<String>
   preferredTimeSlots; // e.g. ["morning", "afternoon", "evening"]
   final List<int> availableDays; // 0=Sun, 1=Mon ... weekday indices
@@ -64,7 +63,6 @@ class UserModel {
     this.preferredDogSizes = const [],
     this.dogSizes = const [],
     this.experienceLevel = ExperienceLevel.beginner,
-    this.hourlyRate = 0.0,
     this.preferredTimeSlots = const [],
     this.availableDays = const [],
     this.maxDistance = 10.0,
@@ -126,7 +124,6 @@ class UserModel {
             'ExperienceLevel.${data['experienceLevel']}', // Same slug→enum restoration
         orElse: () => ExperienceLevel.beginner,
       ),
-      hourlyRate: (data['hourlyRate'] ?? 0.0).toDouble(),
       preferredTimeSlots: List<String>.from(data['preferredTimeSlots'] ?? []),
       availableDays: List<int>.from(data['availableDays'] ?? []),
       maxDistance: (data['maxDistance'] ?? 10.0).toDouble(),
@@ -185,7 +182,6 @@ class UserModel {
           .toList(),
       'dogSizes': dogSizes.map((e) => e.toString().split('.').last).toList(),
       'experienceLevel': experienceLevel.toString().split('.').last,
-      'hourlyRate': hourlyRate,
       'preferredTimeSlots': preferredTimeSlots,
       'availableDays': availableDays,
       'maxDistance': maxDistance,
@@ -219,7 +215,6 @@ class UserModel {
     List<DogSize>? preferredDogSizes,
     List<DogSize>? dogSizes,
     ExperienceLevel? experienceLevel,
-    double? hourlyRate,
     List<String>? preferredTimeSlots,
     List<int>? availableDays,
     double? maxDistance,
@@ -243,7 +238,6 @@ class UserModel {
       preferredDogSizes: preferredDogSizes ?? this.preferredDogSizes,
       dogSizes: dogSizes ?? this.dogSizes,
       experienceLevel: experienceLevel ?? this.experienceLevel,
-      hourlyRate: hourlyRate ?? this.hourlyRate,
       preferredTimeSlots: preferredTimeSlots ?? this.preferredTimeSlots,
       availableDays: availableDays ?? this.availableDays,
       maxDistance: maxDistance ?? this.maxDistance,

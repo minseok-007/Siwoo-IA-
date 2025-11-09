@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getWalk(walkId) {
+      return get(/databases/$(database)/documents/walk_requests/$(walkId));
+    }
+
+    function walkExists(walkId) {
+      return walkId != null && getWalk(walkId).exists;
+    }
+
+    function isWalkParticipantData(walkData) {
+      return isSignedIn() && (
+        walkData.ownerId == request.auth.uid ||
+        (walkData.walkerId != null && walkData.walkerId == request.auth.uid)
+      );
+    }
+
+    function canAccessWalk(walkId) {
+      return walkExists(walkId) && isWalkParticipantData(getWalk(walkId).data);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isUser(userId);
+
+      match /deviceTokens/{token} {
+        allow read, write, delete: if isUser(userId);
+      }
+    }
+
+    match /dogs/{dogId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if resource.data.ownerId == request.auth.uid;
+    }
+
+    match /walk_requests/{walkId} {
+      allow read: if resource != null && isWalkParticipantData(resource.data);
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid ||
+        (resource.data.walkerId != null && resource.data.walkerId == request.auth.uid)
+      );
+      allow delete: if resource.data.ownerId == request.auth.uid;
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.reviewerId == request.auth.uid
+        && canAccessWalk(request.resource.data.walkId);
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && (
+          request.resource.data.userId == request.auth.uid ||
+          canAccessWalk(request.resource.data.relatedId)
+        );
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /chats/{chatId} {
+      allow read: if resource != null && (
+        resource.data.ownerId == request.auth.uid ||
+        (resource.data.walkerId != null && resource.data.walkerId == request.auth.uid)
+      );
+
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId is string
+        && request.resource.data.walkerId is string
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() <= 2
+        && request.resource.data.participants.hasOnly([
+          request.resource.data.ownerId,
+          request.resource.data.walkerId
+        ])
+        && request.resource.data.participants.hasAny([request.auth.uid]);
+
+      allow update: if resource != null
+        && (
+          resource.data.ownerId == request.auth.uid ||
+          (resource.data.walkerId != null && resource.data.walkerId == request.auth.uid) ||
+          (request.resource.data.ownerId != null && request.resource.data.ownerId == request.auth.uid) ||
+          (request.resource.data.walkerId != null && request.resource.data.walkerId == request.auth.uid)
+        )
+        && (
+          !request.resource.data.keys().hasAny(['participants']) ||
+          (
+            request.resource.data.participants is list &&
+            request.resource.data.participants.size() <= 2 &&
+            request.resource.data.participants.hasOnly([
+              request.resource.data.ownerId != null
+                ? request.resource.data.ownerId
+                : resource.data.ownerId,
+              request.resource.data.walkerId != null
+                ? request.resource.data.walkerId
+                : resource.data.walkerId
+            ])
+          )
+        );
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        function chat() {
+          return get(/databases/$(database)/documents/chats/$(chatId));
+        }
+
+        function isChatParticipant() {
+          return isSignedIn() && chat().exists && chat().data.participants.hasAny([request.auth.uid]);
+        }
+
+        allow read: if isChatParticipant();
+        allow create: if isChatParticipant() && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

@@ -134,7 +134,6 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
         duration: 30,
         notes: 'Sample walk request note',
         status: WalkRequestStatus.pending,
-        budget: 50.0,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -515,13 +514,6 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      '\$${match.walker.hourlyRate}/hr',
-                      style: TextStyle(
-                        color: Colors.green[600],
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                   ],
                 ),
               ],

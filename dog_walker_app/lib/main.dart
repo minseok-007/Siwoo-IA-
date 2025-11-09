@@ -1,6 +1,7 @@
 // Flutter framework imports
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 // Firebase imports for backend services
 import 'package:firebase_core/firebase_core.dart';
@@ -12,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'services/auth_provider.dart';
 import 'services/theme_provider.dart';
 import 'services/locale_provider.dart';
+import 'services/messaging_service.dart';
 
 // Internationalization support
 import 'l10n/app_localizations.dart';
@@ -19,6 +21,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 // Authentication routing wrapper
 import 'screens/auth_wrapper.dart';
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
 
 /// Configures Firebase for Flutter Web using environment variables injected via `--dart-define`.
 /// 
@@ -88,7 +94,10 @@ void main() async {
     // Mobile/Desktop platforms use default configuration from platform files
     await Firebase.initializeApp();
   }
-  
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await MessagingService.instance.configureGlobalSettings();
+
   // Launch the main application
   runApp(const MyApp());
 }

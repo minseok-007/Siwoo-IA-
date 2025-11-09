@@ -6,6 +6,8 @@ import '../services/walk_request_service.dart';
 import '../services/auth_provider.dart';
 import '../services/user_service.dart';
 import 'chat_screen.dart';
+import 'review_form_screen.dart';
+import '../services/review_service.dart';
 import '../l10n/app_localizations.dart';
 
 /// Schedule view for walkers.
@@ -20,8 +22,10 @@ class ScheduledWalksScreen extends StatefulWidget {
 class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
   final WalkRequestService _walkService = WalkRequestService();
   final UserService _userService = UserService();
+  final ReviewService _reviewService = ReviewService();
   List<WalkRequestModel> _scheduledWalks = [];
   bool _loading = true;
+  bool _processing = false;
 
   @override
   void initState() {
@@ -31,11 +35,12 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
 
   Future<void> _fetchScheduledWalks() async {
     setState(() => _loading = true);
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    if (user == null) return;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = auth.currentUserId;
+    if (currentUserId == null) return;
 
     try {
-      final walks = await _walkService.getRequestsByWalker(user.uid);
+      final walks = await _walkService.getRequestsByWalker(currentUserId);
       setState(() {
         _scheduledWalks = walks
             .where(
@@ -71,15 +76,29 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
       }
 
       // Create a unique chat ID based on walk request and participants
-      final chatId = 'walk_${walk.id}_${walk.ownerId}_${walk.walkerId}';
+      final chatId = 'walk_${walk.id}_${walk.ownerId}_${walk.walkerId ?? ''}';
+      final currentUserId =
+          Provider.of<AuthProvider>(context, listen: false).currentUserId;
+      final chatUserId = currentUserId ?? walk.walkerId;
+      if (chatUserId == null || chatUserId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).t('user_not_authenticated'),
+            ),
+          ),
+        );
+        return;
+      }
 
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ChatScreen(
             chatId: chatId,
-            userId: walk.walkerId!,
+            userId: chatUserId,
             otherUserName: owner.fullName,
+            otherUserId: owner.id,
             walkRequest: walk,
           ),
         ),
@@ -92,6 +111,53 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _markCompletedAndPromptReview(WalkRequestModel walk) async {
+    if (_processing) return;
+    setState(() => _processing = true);
+    try {
+      // Mark as completed
+      final updated = walk.copyWith(status: WalkRequestStatus.completed);
+      await _walkService.updateWalkRequest(updated);
+
+      // Refresh list
+      await _fetchScheduledWalks();
+
+      // Current user (walker in this screen)
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final reviewerId = auth.currentUserId ?? '';
+      if (reviewerId.isEmpty) {
+        setState(() => _processing = false);
+        return;
+      }
+
+      // Prevent duplicate review for this walk by this reviewer
+      final already = await _reviewService.hasReview(
+        reviewerId: reviewerId,
+        walkId: walk.id,
+      );
+
+      if (!already) {
+        // Reviewee is the owner when walker leaves a review from schedule
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReviewFormScreen(
+              reviewerId: reviewerId,
+              revieweeId: walk.ownerId,
+              walkId: walk.id,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error completing walk: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _processing = false);
     }
   }
 
@@ -254,16 +320,7 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
                             if (walk.status == WalkRequestStatus.accepted)
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    // TODO: Implement mark as completed functionality
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          t.t('mark_completed_coming_soon'),
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                  onPressed: () => _markCompletedAndPromptReview(walk),
                                   icon: const Icon(Icons.check_circle_outline),
                                   label: Text(t.t('mark_complete')),
                                   style: OutlinedButton.styleFrom(

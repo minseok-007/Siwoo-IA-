@@ -21,7 +21,6 @@ class WalkRequestModel {
   final String? notes;
   final WalkRequestStatus status;
   final int duration; // Minutes; convert to hours/minutes only in the UI
-  final double? budget; // Budget amount; UI decides which currency to display
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -36,7 +35,6 @@ class WalkRequestModel {
     this.notes,
     this.status = WalkRequestStatus.pending,
     this.duration = 30,
-    this.budget,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -80,7 +78,6 @@ class WalkRequestModel {
         orElse: () => WalkRequestStatus.pending,
       ),
       duration: durationMinutes,
-      budget: data['budget']?.toDouble(),
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(), // Default keeps rollbacks safe
@@ -105,7 +102,6 @@ class WalkRequestModel {
       'notes': notes,
       'status': status.toString().split('.').last,
       'duration': duration,
-      'budget': budget,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -124,7 +120,6 @@ class WalkRequestModel {
     String? notes,
     WalkRequestStatus? status,
     int? duration,
-    double? budget,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -139,7 +134,6 @@ class WalkRequestModel {
       notes: notes ?? this.notes,
       status: status ?? this.status,
       duration: duration ?? this.duration,
-      budget: budget ?? this.budget,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

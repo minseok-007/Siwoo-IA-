@@ -8,6 +8,8 @@ import '../services/auth_provider.dart';
 import 'dog_list_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../models/dog_traits.dart';
+import '../widgets/reviews_list_widget.dart';
+import '../services/review_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -24,7 +26,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Walker-specific
   ExperienceLevel _experienceLevel = ExperienceLevel.beginner;
-  double _hourlyRate = 0.0;
   List<DogSize> _preferredDogSizes = [];
   double _maxDistance = 10.0;
   List<int> _availableDays = [];
@@ -43,7 +44,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _phoneNumber = user?.phoneNumber ?? '';
     if (user != null) {
       _experienceLevel = user.experienceLevel;
-      _hourlyRate = user.hourlyRate;
       _preferredDogSizes = List<DogSize>.from(user.preferredDogSizes);
       _maxDistance = user.maxDistance;
       _availableDays = List<int>.from(user.availableDays);
@@ -87,6 +87,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildWalkerSection(),
                     if (user.userType == UserType.dogOwner)
                       _buildOwnerSection(context, user),
+                    const SizedBox(height: 16),
+                    _buildReviewsSection(user),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
@@ -116,6 +118,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildReviewsSection(UserModel user) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppLocalizations.of(context).t('leave_a_review'),
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            FutureBuilder<double>(
+              future: ReviewService().getAverageRating(user.id),
+              builder: (context, snapshot) {
+                final avg = (snapshot.data ?? 0.0);
+                return Row(
+                  children: [
+                    Icon(Icons.star, color: Colors.amber[700]),
+                    const SizedBox(width: 6),
+                    Text('${avg.toStringAsFixed(1)}/5'),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            ReviewsListWidget(userId: user.id),
+          ],
+        ),
+      ),
     );
   }
 
@@ -247,24 +285,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onChanged: (v) => setState(
                 () => _experienceLevel = v ?? ExperienceLevel.beginner,
               ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              initialValue: _hourlyRate.toStringAsFixed(0),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context).t('hourly_rate'),
-                border: const OutlineInputBorder(),
-              ),
-              validator: (v) {
-                final parsed = double.tryParse(v ?? '');
-                if (parsed == null || parsed < 0)
-                  return AppLocalizations.of(context).t('enter_valid_rate');
-                return null;
-              },
-              onSaved: (v) => _hourlyRate = double.tryParse(v ?? '0') ?? 0,
             ),
             const SizedBox(height: 16),
             Text(
@@ -496,7 +516,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         fullName: _fullName,
         phoneNumber: _phoneNumber,
         experienceLevel: _experienceLevel,
-        hourlyRate: _hourlyRate,
         preferredDogSizes: _preferredDogSizes,
         maxDistance: _maxDistance,
         availableDays: _availableDays,

@@ -23,8 +23,12 @@ import '../models/user_model.dart';
 /// - Decouples UI from Firebase implementation details
 class AuthService {
   // Firebase service instances
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
+
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+      : _auth = auth ?? FirebaseAuth.instance,
+        _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Gets the currently authenticated user from Firebase Auth.
   /// 

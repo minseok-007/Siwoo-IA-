@@ -80,7 +80,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
           final dog = await _dogService.getDogById(walk.dogId);
 
           // Create chat ID
-          final chatId = 'walk_${walk.id}_${walk.ownerId}_${walk.walkerId}';
+          final chatId =
+              'walk_${walk.id}_${walk.ownerId}_${walk.walkerId ?? ''}';
 
           // Get last message for preview
           final lastMessage = await _getLastMessage(chatId);
@@ -192,10 +193,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 try {
                   final walkId = parts[1];
                   final ownerId = parts[2];
-                  final walkerId = parts[3];
+                  final walkerIdFromChat =
+                      parts[3] != 'null' ? parts[3] : '';
 
                   print(
-                    'Parsed walk info: walkId=$walkId, ownerId=$ownerId, walkerId=$walkerId',
+                    'Parsed walk info: walkId=$walkId, ownerId=$ownerId, walkerId=$walkerIdFromChat',
                   );
 
                   // Get the walk request
@@ -211,7 +213,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     // Determine the other user
                     String otherUserId;
                     if (user.id == walk.ownerId) {
-                      otherUserId = walk.walkerId ?? '';
+                      otherUserId =
+                          walk.walkerId?.isNotEmpty == true
+                              ? walk.walkerId!
+                              : walkerIdFromChat;
                     } else {
                       otherUserId = walk.ownerId;
                     }
@@ -223,6 +228,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         otherUserId,
                       );
                       if (otherUser != null) {
+                        final enrichedWalk =
+                            (walk.walkerId == null || walk.walkerId!.isEmpty) &&
+                                    walkerIdFromChat.isNotEmpty
+                                ? walk.copyWith(walkerId: walkerIdFromChat)
+                                : walk;
                         // Only try to get dog if dogId is not empty
                         DogModel? dog;
                         if (walk.dogId.isNotEmpty) {
@@ -236,7 +246,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                         chats.add({
                           'chatId': chatId,
-                          'walkRequest': walk,
+                          'walkRequest': enrichedWalk,
                           'otherUser': otherUser,
                           'dog': dog,
                           'lastMessage': lastMessage,
@@ -284,14 +294,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChatScreen(
-          chatId: chatId,
-          userId: widget.userId,
-          otherUserName: otherUser.fullName,
-          walkRequest: walkRequest,
+          builder: (context) => ChatScreen(
+            chatId: chatId,
+            userId: widget.userId,
+            otherUserName: otherUser.fullName,
+            otherUserId: otherUser.id,
+            walkRequest: walkRequest,
+          ),
         ),
-      ),
-    );
+      );
   }
 
   String _formatTime(DateTime dateTime) {

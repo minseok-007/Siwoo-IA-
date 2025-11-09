@@ -45,14 +45,15 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
 
   Future<void> _fetchRequests() async {
     setState(() => _loading = true);
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    if (user == null) return;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = auth.currentUserId;
+    if (currentUserId == null) return;
 
     try {
       if (widget.isWalker) {
         // For walkers, fetch both available and accepted requests
         final available = await _service.getAvailableRequests();
-        final accepted = await _service.getRequestsByWalker(user.uid);
+        final accepted = await _service.getRequestsByWalker(currentUserId);
 
         setState(() {
           _availableRequests = available;
@@ -67,7 +68,7 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
         });
       } else {
         // For owners, fetch their own requests
-        final reqs = await _service.getRequestsByOwner(user.uid);
+        final reqs = await _service.getRequestsByOwner(currentUserId);
         setState(() {
           _availableRequests = reqs;
           _loading = false;
@@ -83,12 +84,13 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
   }
 
   void _onAddRequest() async {
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    if (user == null) return;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final ownerId = auth.currentUserId;
+    if (ownerId == null) return;
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => WalkRequestFormScreen(ownerId: user.uid),
+        builder: (context) => WalkRequestFormScreen(ownerId: ownerId),
       ),
     );
     if (result == true) _fetchRequests();
