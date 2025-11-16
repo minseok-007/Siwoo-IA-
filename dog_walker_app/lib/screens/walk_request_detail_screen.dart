@@ -14,6 +14,9 @@ import '../services/review_service.dart';
 import '../services/notification_service.dart';
 import '../services/message_service.dart';
 import '../l10n/app_localizations.dart';
+import '../models/walk_application_model.dart';
+import '../services/walk_application_service.dart';
+import 'walk_application_list_screen.dart';
 
 /// Walk-request detail screen.
 /// - Surfaces role-specific actions: walkers accept, owners cancel/reschedule, etc.
@@ -40,10 +43,14 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
   final ReviewService _reviewService = ReviewService();
   final NotificationService _notificationService = NotificationService();
   final MessageService _messageService = MessageService();
+  final WalkApplicationService _applicationService = WalkApplicationService();
   DogModel? _dog;
   bool _loadingDog = true;
   bool _hasLeftReview = false;
   bool _checkingReview = false;
+  bool _hasApplied = false;
+  bool _checkingApplication = false;
+  WalkApplicationModel? _myApplication;
 
   @override
   void initState() {
@@ -51,6 +58,40 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     _request = widget.request;
     _loadDog();
     _checkHasLeftReview();
+    if (widget.isWalker) {
+      _checkApplicationStatus();
+    }
+  }
+
+  Future<void> _checkApplicationStatus() async {
+    setState(() => _checkingApplication = true);
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final currentUserId = auth.currentUserId;
+      if (currentUserId == null) return;
+
+      final hasApplied = await _applicationService.hasWalkerApplied(
+        _request.id,
+        currentUserId,
+      );
+
+      if (hasApplied) {
+        final applications = await _applicationService.getApplicationsByWalkRequest(_request.id);
+        _myApplication = applications.firstWhere(
+          (app) => app.walkerId == currentUserId,
+          orElse: () => applications.first,
+        );
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _hasApplied = hasApplied;
+        _checkingApplication = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _checkingApplication = false);
+    }
   }
 
   Future<void> _loadDog() async {
@@ -87,7 +128,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     }
   }
 
-  Future<void> _acceptRequest() async {
+  Future<void> _applyForRequest() async {
     setState(() => _processing = true);
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -104,24 +145,53 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
       return;
     }
 
-    try {
-      final updated = _request.copyWith(
-        status: WalkRequestStatus.accepted,
-        walkerId: currentUserId,
+    // Check if already applied
+    final alreadyApplied = await _applicationService.hasWalkerApplied(
+      _request.id,
+      currentUserId,
+    );
+
+    if (alreadyApplied) {
+      setState(() => _processing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You have already applied for this walk request.'),
+        ),
       );
-      await _service.updateWalkRequest(updated);
+      return;
+    }
+
+    try {
+      final application = WalkApplicationModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        walkRequestId: _request.id,
+        walkerId: currentUserId,
+        ownerId: _request.ownerId,
+        status: ApplicationStatus.pending,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await _applicationService.addApplication(application);
+      
+      if (!mounted) return;
       setState(() {
-        _request = updated;
+        _hasApplied = true;
+        _myApplication = application;
         _processing = false;
       });
-      Navigator.pop(context, true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Application submitted successfully! The owner will review your application.'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '${AppLocalizations.of(context).t('err_accept_request')}: $e',
-          ),
+          content: Text('Error applying for walk: $e'),
         ),
       );
     }
@@ -376,6 +446,35 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     return 'walk_${_request.id}_${_request.ownerId}_${walkerId ?? ''}';
   }
 
+  Future<int> _getApplicationsCount() async {
+    try {
+      final applications = await _applicationService.getPendingApplicationsByWalkRequest(_request.id);
+      return applications.length;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  Future<void> _viewApplications() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WalkApplicationListScreen(
+          walkRequest: _request,
+        ),
+      ),
+    );
+    if (result == true) {
+      // Refresh if a walker was selected
+      final updated = await _service.getRequestById(_request.id);
+      if (updated != null && mounted) {
+        setState(() {
+          _request = updated;
+        });
+      }
+    }
+  }
+
   Future<void> _startChat() async {
     try {
       final authProvider =
@@ -537,6 +636,42 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
               '${t.t('status')}: ${_request.status.toString().split(".").last}',
               style: const TextStyle(fontSize: 16),
             ),
+            // Show applications count for owners
+            if (!widget.isWalker && _request.status == WalkRequestStatus.pending) ...[
+              const SizedBox(height: 16),
+              FutureBuilder<int>(
+                future: _getApplicationsCount(),
+                builder: (context, snapshot) {
+                  final count = snapshot.data ?? 0;
+                  return Card(
+                    color: Colors.blue[50],
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '$count ${count == 1 ? 'application' : 'applications'}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: count > 0 ? _viewApplications : null,
+                            icon: const Icon(Icons.people_outline),
+                            label: const Text('View Applications'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 24),
             if (_processing) const Center(child: CircularProgressIndicator()),
             if (!_processing)
@@ -548,13 +683,29 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
                       if (_request.status == WalkRequestStatus.pending &&
                           widget.isWalker)
                         Expanded(
-                          child: ElevatedButton(
-                            onPressed: _acceptRequest,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green[600],
-                            ),
-                            child: Text(t.t('accept')),
-                          ),
+                          child: _checkingApplication
+                              ? const Center(child: CircularProgressIndicator())
+                              : _hasApplied
+                                  ? ElevatedButton(
+                                      onPressed: null,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.grey[400],
+                                      ),
+                                      child: Text(
+                                        _myApplication?.status == ApplicationStatus.accepted
+                                            ? 'Application Accepted'
+                                            : _myApplication?.status == ApplicationStatus.rejected
+                                                ? 'Application Rejected'
+                                                : 'Application Submitted',
+                                      ),
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: _applyForRequest,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green[600],
+                                      ),
+                                      child: const Text('Apply for Walk'),
+                                    ),
                         ),
                       if ((_request.status == WalkRequestStatus.pending &&
                               !widget.isWalker) ||
