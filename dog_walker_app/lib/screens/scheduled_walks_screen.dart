@@ -40,15 +40,24 @@ class _ScheduledWalksScreenState extends State<ScheduledWalksScreen> {
     if (currentUserId == null) return;
 
     try {
+      final now = DateTime.now();
       final walks = await _walkService.getRequestsByWalker(currentUserId);
+      
+      // Filter: only future walks with accepted or completed status
+      final futureWalks = walks
+          .where(
+            (walk) =>
+                (walk.status == WalkRequestStatus.accepted ||
+                 walk.status == WalkRequestStatus.completed) &&
+                walk.startTime.isAfter(now),
+          )
+          .toList();
+      
+      // Sort by start time (ascending - earliest first)
+      futureWalks.sort((a, b) => a.startTime.compareTo(b.startTime));
+      
       setState(() {
-        _scheduledWalks = walks
-            .where(
-              (walk) =>
-                  walk.status == WalkRequestStatus.accepted ||
-                  walk.status == WalkRequestStatus.completed,
-            )
-            .toList();
+        _scheduledWalks = futureWalks;
         _loading = false;
       });
     } catch (e) {

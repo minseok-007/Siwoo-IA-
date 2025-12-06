@@ -30,6 +30,7 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
   List<WalkRequestModel> _availableRequests = [];
   List<WalkRequestModel> _filteredAvailableRequests = [];
   List<WalkRequestModel> _acceptedRequests = [];
+  List<WalkRequestModel> _pastRequests = []; // For owners: past walk requests
   bool _loading = true;
   late TabController _tabController;
   
@@ -46,15 +47,16 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
     super.initState();
     if (widget.isWalker) {
       _tabController = TabController(length: 2, vsync: this);
+    } else {
+      // For owners, we need 2 tabs: current and past
+      _tabController = TabController(length: 2, vsync: this);
     }
     _fetchRequests();
   }
 
   @override
   void dispose() {
-    if (widget.isWalker) {
-      _tabController.dispose();
-    }
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -65,30 +67,59 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
     if (currentUserId == null) return;
 
     try {
+      final now = DateTime.now();
+      
       if (widget.isWalker) {
         // For walkers, fetch both available and accepted requests
         final available = await _service.getAvailableRequests();
         final accepted = await _service.getRequestsByWalker(currentUserId);
 
+        // Filter out past requests from available (only show future)
+        final futureAvailable = available
+            .where((req) => req.startTime.isAfter(now))
+            .toList();
+        
+        // Filter accepted requests: only future ones
+        final futureAccepted = accepted
+            .where(
+              (req) =>
+                  (req.status == WalkRequestStatus.accepted ||
+                   req.status == WalkRequestStatus.completed) &&
+                  req.startTime.isAfter(now),
+            )
+            .toList();
+        
+        // Sort by start time (ascending - earliest first)
+        futureAvailable.sort((a, b) => a.startTime.compareTo(b.startTime));
+        futureAccepted.sort((a, b) => a.startTime.compareTo(b.startTime));
+
         setState(() {
-          _availableRequests = available;
-          _filteredAvailableRequests = available;
-          _acceptedRequests = accepted
-              .where(
-                (req) =>
-                    req.status == WalkRequestStatus.accepted ||
-                    req.status == WalkRequestStatus.completed,
-              )
-              .toList();
+          _availableRequests = futureAvailable;
+          _filteredAvailableRequests = futureAvailable;
+          _acceptedRequests = futureAccepted;
           _loading = false;
         });
         // Apply filters and sort by relevance
         await _applyFilters();
       } else {
-        // For owners, fetch their own requests
+        // For owners, fetch their own requests and separate past/future
         final reqs = await _service.getRequestsByOwner(currentUserId);
+        
+        // Separate into future and past
+        final futureRequests = reqs
+            .where((req) => req.startTime.isAfter(now))
+            .toList();
+        final pastRequests = reqs
+            .where((req) => req.startTime.isBefore(now) || req.startTime.isAtSameMomentAs(now))
+            .toList();
+        
+        // Sort by start time (ascending - earliest first for future, descending for past)
+        futureRequests.sort((a, b) => a.startTime.compareTo(b.startTime));
+        pastRequests.sort((a, b) => b.startTime.compareTo(a.startTime));
+
         setState(() {
-          _availableRequests = reqs;
+          _availableRequests = futureRequests;
+          _pastRequests = pastRequests;
           _loading = false;
         });
       }
@@ -208,8 +239,12 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
       }
     }
     
-    // Sort by relevance score (highest first)
-    scoredRequests.sort((a, b) => b.relevanceScore.compareTo(a.relevanceScore));
+    // Sort by relevance score (highest first), then by start time (earliest first)
+    scoredRequests.sort((a, b) {
+      final scoreCompare = b.relevanceScore.compareTo(a.relevanceScore);
+      if (scoreCompare != 0) return scoreCompare;
+      return a.request.startTime.compareTo(b.request.startTime);
+    });
     
     setState(() {
       _filteredAvailableRequests = scoredRequests.map((item) => item.request).toList();
@@ -237,6 +272,25 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
       dogs: dogs,
       walker: walker,
     );
+    
+    // Additional sort by start time (earliest first) for same relevance scores
+    sorted.sort((a, b) {
+      // First check if we have relevance scores (if sortByRelevance returns scored list)
+      // Since sortByRelevance returns List<WalkRequestModel>, we need to recalculate for tie-breaking
+      final aScore = RelevanceScoringService.calculateRelevanceScore(
+        walkRequest: a,
+        dog: dogs[a.dogId]!,
+        walker: walker,
+      );
+      final bScore = RelevanceScoringService.calculateRelevanceScore(
+        walkRequest: b,
+        dog: dogs[b.dogId]!,
+        walker: walker,
+      );
+      final scoreCompare = bScore.compareTo(aScore);
+      if (scoreCompare != 0) return scoreCompare;
+      return a.startTime.compareTo(b.startTime);
+    });
     
     setState(() {
       _filteredAvailableRequests = sorted;
@@ -565,7 +619,7 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
                     ],
                   ),
 
-            // Accepted Walks Tab
+            // Accepted Walks Tab (only future)
             _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _acceptedRequests.isEmpty
@@ -608,11 +662,21 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
         ),
       );
     } else {
-      // Owner view (unchanged)
+      // Owner view with tabs for current and past
       return Scaffold(
         appBar: AppBar(
           title: Text(t.t('my_walk_requests')),
           backgroundColor: Colors.green[600],
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: [
+              const Tab(text: 'Current'),
+              const Tab(text: 'Past'),
+            ],
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
@@ -626,21 +690,66 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
           child: const Icon(Icons.add, color: Colors.white),
           tooltip: t.t('post_walk_request'),
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _availableRequests.isEmpty
-            ? Center(
-                child: Text(
-                  t.t('no_walk_requests_yet'),
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                ),
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _availableRequests.length,
-                itemBuilder: (context, index) =>
-                    _buildRequestCard(_availableRequests[index]),
-              ),
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            // Current (Future) Requests Tab
+            _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _availableRequests.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          t.t('no_walk_requests_yet'),
+                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _availableRequests.length,
+                    itemBuilder: (context, index) =>
+                        _buildRequestCard(_availableRequests[index]),
+                  ),
+            
+            // Past Requests Tab
+            _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _pastRequests.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.history,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No past walk requests',
+                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _pastRequests.length,
+                    itemBuilder: (context, index) =>
+                        _buildRequestCard(_pastRequests[index]),
+                  ),
+          ],
+        ),
       );
     }
   }
