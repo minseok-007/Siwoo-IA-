@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_provider.dart';
 import '../models/user_model.dart';
 import 'walk_request_form_screen.dart';
@@ -8,16 +7,22 @@ import 'dog_list_screen.dart';
 import 'walk_request_list_screen.dart';
 import 'chat_list_screen.dart';
 import 'scheduled_walks_screen.dart';
+import 'optimal_schedule_screen.dart';
+import 'recommendations_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
-import 'smart_matching_screen.dart'; // Added import for SmartMatchingScreen
-import 'walk_route_screen.dart'; // Added import for WalkRouteScreen
 import '../l10n/app_localizations.dart';
 
 /// Home dashboard shown after login.
 /// - Presents tailored quick actions based on the user's role.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +30,9 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'PawPal',
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -36,7 +41,7 @@ class HomeScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
               await authProvider.signOut();
@@ -47,7 +52,7 @@ class HomeScreen extends StatelessWidget {
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
           if (authProvider.userModel == null) {
-            return Center(
+            return const Center(
               child: CircularProgressIndicator(),
             );
           }
@@ -101,14 +106,14 @@ class HomeScreen extends StatelessWidget {
                               children: [
                                 Text(
                                   t.t('welcome_back_comma'),
-                                  style: GoogleFonts.poppins(
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.white70,
                                   ),
                                 ),
                                 Text(
                                   user.fullName,
-                                  style: GoogleFonts.poppins(
+                                  style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
@@ -118,7 +123,7 @@ class HomeScreen extends StatelessWidget {
                                   user.userType == UserType.dogOwner 
                                       ? t.t('dog_owner') 
                                       : t.t('dog_walker'),
-                                  style: GoogleFonts.poppins(
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.white70,
                                   ),
@@ -136,7 +141,7 @@ class HomeScreen extends StatelessWidget {
                 // Quick Actions
                 Text(
                   t.t('quick_actions'),
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.grey[800],
@@ -193,38 +198,6 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 12),
-                  _buildActionCard(
-                    context,
-                    t.t('smart_matching'),
-                    t.t('smart_matching_desc'),
-                    Icons.psychology,
-                    Colors.deepPurple,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SmartMatchingScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildActionCard(
-                    context,
-                    t.t('walk_route'),
-                    t.t('walk_route_desc'),
-                    Icons.map,
-                    Colors.red,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const WalkRouteScreen(),
-                        ),
-                      );
-                    },
-                  ),
                 ] else ...[
                   // Dog Walker Actions
                   _buildActionCard(
@@ -261,29 +234,31 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _buildActionCard(
                     context,
-                    t.t('earnings'),
-                    t.t('earnings_desc'),
-                    Icons.attach_money,
-                    Colors.amber,
+                    'Optimal Schedule',
+                    'AI-powered schedule optimization',
+                    Icons.auto_awesome,
+                    Colors.purple,
                     () {
-                      // Placeholder for earnings screen
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(t.t('earnings_coming_soon'))),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const OptimalScheduleScreen(),
+                        ),
                       );
                     },
                   ),
                   const SizedBox(height: 12),
                   _buildActionCard(
                     context,
-                    t.t('walk_route'),
-                    t.t('walk_route_desc'),
-                    Icons.map,
-                    Colors.red,
+                    'AI Recommendations',
+                    'Personalized recommendations using ML',
+                    Icons.recommend,
+                    Colors.pink,
                     () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const WalkRouteScreen(),
+                          builder: (context) => const RecommendationsScreen(),
                         ),
                       );
                     },
@@ -295,7 +270,7 @@ class HomeScreen extends StatelessWidget {
                 // Common Actions
                 Text(
                   t.t('more'),
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.grey[800],
@@ -398,15 +373,15 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.poppins(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey[800],
+                        color: Colors.grey,
                       ),
                     ),
                     Text(
                       subtitle,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
                       ),

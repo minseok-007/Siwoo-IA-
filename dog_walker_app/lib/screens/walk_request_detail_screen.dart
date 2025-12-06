@@ -11,8 +11,9 @@ import '../models/message_model.dart';
 import 'chat_screen.dart';
 import 'review_form_screen.dart';
 import '../services/review_service.dart';
-import '../services/notification_service.dart';
 import '../services/message_service.dart';
+import '../services/schedule_conflict_service.dart';
+import '../services/walk_request_service.dart';
 import '../l10n/app_localizations.dart';
 import '../models/walk_application_model.dart';
 import '../services/walk_application_service.dart';
@@ -41,7 +42,6 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
   final UserService _userService = UserService();
   final DogService _dogService = DogService();
   final ReviewService _reviewService = ReviewService();
-  final NotificationService _notificationService = NotificationService();
   final MessageService _messageService = MessageService();
   final WalkApplicationService _applicationService = WalkApplicationService();
   DogModel? _dog;
@@ -161,6 +161,49 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
       return;
     }
 
+    // Check for schedule conflicts
+    try {
+      final existingWalks = await _service.getRequestsByWalker(currentUserId);
+      print('🔍 Checking conflicts: ${existingWalks.length} existing walks');
+      
+      final hasConflict = ScheduleConflictService.hasConflict(
+        newWalk: _request,
+        existingWalks: existingWalks,
+        walkerId: currentUserId,
+      );
+
+      print('⚠️ Conflict detected: $hasConflict');
+      
+      if (hasConflict) {
+        final conflicts = ScheduleConflictService.findConflicts(
+          newWalk: _request,
+          existingWalks: existingWalks,
+          walkerId: currentUserId,
+        );
+
+        final alternativeTimes = ScheduleConflictService.suggestAlternativeTimes(
+          requestedWalk: _request,
+          existingWalks: existingWalks,
+          walkerId: currentUserId,
+          durationMinutes: _request.duration,
+          maxSuggestions: 3,
+        );
+
+        print('📋 Found ${conflicts.length} conflicts, ${alternativeTimes.length} alternatives');
+
+        if (!mounted) return;
+        setState(() => _processing = false);
+
+        print('💬 Showing conflict dialog...');
+        final shouldContinue = await _showConflictDialog(conflicts, alternativeTimes);
+        print('✅ User choice: $shouldContinue');
+        if (shouldContinue != true) return;
+      }
+    } catch (e) {
+      // If conflict check fails, continue anyway
+      print('Error checking schedule conflicts: $e');
+    }
+
     try {
       final application = WalkApplicationModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -197,6 +240,126 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     }
   }
 
+  Future<bool?> _showConflictDialog(
+    List<({WalkRequestModel walk, double severity})> conflicts,
+    List<DateTime> alternativeTimes,
+  ) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.orange[700]),
+            const SizedBox(width: 8),
+            const Text('Schedule Conflict'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This walk conflicts with ${conflicts.length} existing walk(s) in your schedule.',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              if (conflicts.isNotEmpty) ...[
+                const Text(
+                  'Conflicting walks:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...conflicts.map((conflict) {
+                  final walk = conflict.walk;
+                  final severity = conflict.severity;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: severity > 0.7 ? Colors.red : Colors.orange,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${_formatDateTime(walk.startTime)} - ${_formatDateTime(walk.endTime)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: severity > 0.7 ? Colors.red : Colors.orange,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${(severity * 100).toInt()}% overlap',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: severity > 0.7 ? Colors.red : Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 16),
+              ],
+              if (alternativeTimes.isNotEmpty) ...[
+                const Text(
+                  'Suggested alternative times:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...alternativeTimes.map((time) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.schedule, size: 16, color: Colors.green[700]),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatDateTime(time),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 16),
+              ],
+              const Text(
+                'Do you want to proceed with your application anyway?',
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[700],
+            ),
+            child: const Text('Continue Anyway'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return DateFormat('MMM d, y • h:mm a').format(dateTime);
+  }
+
   Future<void> _cancelRequest() async {
     setState(() => _processing = true);
     final previousWalkerId = _request.walkerId;
@@ -207,7 +370,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
         _request = updated;
         _processing = false;
       });
-      await _notifyCancellation(previousWalkerId);
+      // Notification removed
       Navigator.pop(context, true);
     } catch (e) {
       setState(() => _processing = false);
@@ -263,7 +426,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
         _processing = false;
       });
 
-      await _notifyReschedule(previousWalkerId, newStart, newEnd);
+      // Notification removed
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -369,56 +532,6 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
 
-  Future<void> _notifyCancellation(String? walkerId) async {
-    if (walkerId == null || walkerId.isEmpty) return;
-    final t = AppLocalizations.of(context);
-    final actorId = Provider.of<AuthProvider>(context, listen: false).currentUserId;
-    if (actorId == null) return;
-    final body =
-        '${t.t('walk_request')} ${t.t('at')} ${_request.location} ${t.t('has_been_cancelled')}';
-    await _notificationService.sendNotification(
-      userId: walkerId,
-      title: t.t('walk_request'),
-      body: body,
-      relatedId: _request.id,
-      type: 'cancellation',
-      createdBy: actorId,
-    );
-    await _sendSystemMessage(
-      walkerId: walkerId,
-      text: body,
-    );
-  }
-
-  Future<void> _notifyReschedule(
-    String? walkerId,
-    DateTime newStart,
-    DateTime newEnd,
-  ) async {
-    if (walkerId == null || walkerId.isEmpty) return;
-    final t = AppLocalizations.of(context);
-    final actorId = Provider.of<AuthProvider>(context, listen: false).currentUserId;
-    if (actorId == null) return;
-    final formattedStart = DateFormat('MMM d, h:mm a').format(newStart);
-    final formattedEnd = DateFormat('MMM d, h:mm a').format(newEnd);
-    final body = t
-        .t('reschedule_notification_body')
-        .replaceFirst('%s1', formattedStart)
-        .replaceFirst('%s2', formattedEnd);
-
-    await _notificationService.sendNotification(
-      userId: walkerId,
-      title: t.t('reschedule'),
-      body: body,
-      relatedId: _request.id,
-      type: 'reschedule',
-      createdBy: actorId,
-    );
-    await _sendSystemMessage(
-      walkerId: walkerId,
-      text: body,
-    );
-  }
 
   Future<void> _sendSystemMessage({
     required String walkerId,
@@ -546,6 +659,7 @@ class _WalkRequestDetailScreenState extends State<WalkRequestDetailScreen> {
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/user_model.dart';
@@ -130,7 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Text(
               AppLocalizations.of(context).t('leave_a_review'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -178,7 +177,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Text(
                 user.fullName,
-                style: GoogleFonts.poppins(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
@@ -187,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 user.userType == UserType.dogOwner
                     ? AppLocalizations.of(context).t('dog_owner')
                     : AppLocalizations.of(context).t('dog_walker'),
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[700],
                 ),
@@ -208,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Text(
               AppLocalizations.of(context).t('basic_info'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -262,7 +261,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Text(
               AppLocalizations.of(context).t('walker_details'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -289,7 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
             Text(
               AppLocalizations.of(context).t('preferred_dog_sizes'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -317,7 +316,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
             Text(
               '${AppLocalizations.of(context).t('max_distance_km')}: ${_maxDistance.toStringAsFixed(0)}',
-              style: GoogleFonts.poppins(fontSize: 14),
+              style: const TextStyle(fontSize: 14),
             ),
             Slider(
               value: _maxDistance,
@@ -330,7 +329,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 12),
             Text(
               AppLocalizations.of(context).t('available_days'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -358,7 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 12),
             Text(
               AppLocalizations.of(context).t('preferred_time_slots'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -386,7 +385,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 12),
             Text(
               AppLocalizations.of(context).t('preferred_temperaments'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -414,7 +413,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 12),
             Text(
               AppLocalizations.of(context).t('accepted_energy_levels'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -442,7 +441,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 12),
             Text(
               AppLocalizations.of(context).t('supported_special_needs'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -482,7 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Text(
               AppLocalizations.of(context).t('dog_owner'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),

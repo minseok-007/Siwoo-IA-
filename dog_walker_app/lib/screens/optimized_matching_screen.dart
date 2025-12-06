@@ -7,7 +7,6 @@ import '../models/user_model.dart';
 import '../models/dog_model.dart';
 import '../models/walk_request_model.dart';
 import '../services/integrated_matching_service.dart';
-import '../services/optimization_matching_service.dart';
 import '../services/auth_provider.dart';
 import '../services/user_service.dart';
 import '../services/dog_service.dart';
@@ -34,7 +33,6 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
   bool _loading = true;
   String? _error;
   String _selectedMethod = 'integrated';
-  OptimizationCriteria _selectedCriteria = OptimizationCriteria.distanceAndTime;
 
   double _minScore = 0.5;
   double _maxDistance = 20.0;
@@ -143,7 +141,6 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
       walkRequest: _currentWalkRequest!,
       owner: _currentUser!,
       dog: dog,
-      criteria: _selectedCriteria,
       maxResults: 20,
       useLocationFiltering: _useLocationFiltering,
     );
@@ -269,8 +266,8 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
               children: [
                 Expanded(
                   child: RadioListTile<String>(
-                    title: const Text('Integrated Matching'),
-                    subtitle: const Text('Hungarian Algorithm'),
+                    title: const Text('Weighted Scoring'),
+                    subtitle: const Text('Multi-factor matching'),
                     value: 'integrated',
                     groupValue: _selectedMethod,
                     onChanged: (value) {
@@ -300,44 +297,12 @@ class _OptimizedMatchingScreenState extends State<OptimizedMatchingScreen>
                 ),
               ],
             ),
-            if (_selectedMethod == 'integrated') ...[
-              const SizedBox(height: 12),
-              DropdownButtonFormField<OptimizationCriteria>(
-                value: _selectedCriteria,
-                decoration: const InputDecoration(
-                  labelText: 'Optimization Criteria',
-                  border: OutlineInputBorder(),
-                ),
-                items: OptimizationCriteria.values.map((criteria) {
-                  return DropdownMenuItem(
-                    value: criteria,
-                    child: Text(_getCriteriaLabel(criteria)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() => _selectedCriteria = value!);
-                  _findMatches();
-                },
-              ),
-            ],
           ],
         ),
       ),
     );
   }
 
-  String _getCriteriaLabel(OptimizationCriteria criteria) {
-    switch (criteria) {
-      case OptimizationCriteria.distanceOnly:
-        return 'Distance Only';
-      case OptimizationCriteria.timeOnly:
-        return 'Time Only';
-      case OptimizationCriteria.distanceAndTime:
-        return 'Distance and Time';
-      case OptimizationCriteria.balanced:
-        return 'Balanced';
-    }
-  }
 
   Widget _buildStatsCard(List<IntegratedMatch> matches) {
     return Card(

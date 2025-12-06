@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_provider.dart';
 import '../services/theme_provider.dart';
 import '../services/locale_provider.dart';
@@ -28,7 +27,7 @@ class SettingsScreen extends StatelessWidget {
         ),
         title: Text(
           AppLocalizations.of(context).t('settings'),
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Theme.of(context).appBarTheme.titleTextStyle?.color,
@@ -94,7 +93,7 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     Text(
                       user?.fullName ?? 'User',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -103,7 +102,7 @@ class SettingsScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       user?.email ?? 'user@example.com',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 14,
                         color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
@@ -124,7 +123,7 @@ class SettingsScreen extends StatelessWidget {
       children: [
         Text(
           AppLocalizations.of(context).t('appearance'),
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -159,7 +158,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             title: Text(
               AppLocalizations.of(context).t('dark_mode'),
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -167,7 +166,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             subtitle: Text(
               AppLocalizations.of(context).t('dark_mode_desc'),
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 14,
                 color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
@@ -202,7 +201,7 @@ class SettingsScreen extends StatelessWidget {
       children: [
         Text(
           t.t('language'),
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -245,7 +244,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 title: Text(
                   t.t('language'),
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -253,7 +252,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 subtitle: Text(
                   subtitle,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 14,
                     color: Theme.of(context).textTheme.bodyMedium?.color,
                   ),
@@ -322,22 +321,21 @@ class SettingsScreen extends StatelessWidget {
                 builder: (context) => AlertDialog(
                   title: Text(
                     AppLocalizations.of(context).t('logout'),
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   content: Text(
                     AppLocalizations.of(context).t('logout_q'),
-                    style: GoogleFonts.poppins(),
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
-                      child: Text(AppLocalizations.of(context).t('cancel'), style: GoogleFonts.poppins()),
+                      child: Text(AppLocalizations.of(context).t('cancel')),
                     ),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(true),
                       child: Text(
                         AppLocalizations.of(context).t('logout'),
-                        style: GoogleFonts.poppins(color: Colors.red[600]),
+                        style: TextStyle(color: Colors.red[600]),
                       ),
                     ),
                   ],
@@ -368,7 +366,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             child: Text(
               AppLocalizations.of(context).t('logout'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),

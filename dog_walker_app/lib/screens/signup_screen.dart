@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/user_model.dart';
 import '../models/dog_traits.dart';
 import '../services/auth_provider.dart';
@@ -132,7 +131,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'PawPal',
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: Colors.blue[600],
@@ -142,7 +141,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 8),
                 Text(
                   t.t('connect_with_dog_lovers'),
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
                   ),
@@ -153,7 +152,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 // User Type Selection
                 Text(
                   t.t('i_am_a'),
-                  style: GoogleFonts.poppins(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -322,7 +321,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             )
                           : Text(
                               t.t('create_account'),
-                              style: GoogleFonts.poppins(
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -338,7 +337,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   children: [
                     Text(
                       t.t('already_have_account'),
-                      style: GoogleFonts.poppins(color: Colors.grey[600]),
+                      style: TextStyle(color: Colors.grey[600]),
                     ),
                     TextButton(
                       onPressed: () {
@@ -351,9 +350,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       },
                       child: Text(
                         t.t('sign_in'),
-                        style: GoogleFonts.poppins(
+                        style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: Colors.blue[600],
+                          color: Colors.blue,
                         ),
                       ),
                     ),
@@ -401,7 +400,7 @@ class _SignupScreenState extends State<SignupScreen> {
             const SizedBox(height: 8),
             Text(
               title,
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: isSelected ? Colors.blue[600] : Colors.grey[800],
@@ -410,7 +409,7 @@ class _SignupScreenState extends State<SignupScreen> {
             const SizedBox(height: 4),
             Text(
               description,
-              style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[600]),
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
           ],
@@ -429,7 +428,7 @@ class _SignupScreenState extends State<SignupScreen> {
           children: [
             Text(
               t.t('walker_preferences'),
-              style: GoogleFonts.poppins(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -567,7 +566,7 @@ class _SignupScreenState extends State<SignupScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
         Wrap(

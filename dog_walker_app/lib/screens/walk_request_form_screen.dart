@@ -78,6 +78,7 @@ class _WalkRequestFormScreenState extends State<WalkRequestFormScreen> {
     }
   }
 
+
   @override
   void dispose() {
     _locationController.dispose();

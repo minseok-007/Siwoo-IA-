@@ -5,6 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/user_model.dart';
 
+/// Location service with improved permission handling
+
 class LocationService {
   static final LocationService _instance = LocationService._internal();
   factory LocationService() => _instance;
@@ -18,24 +20,60 @@ class LocationService {
   static const Duration _updateInterval = Duration(minutes: 5);
   static const double _minDistanceChange = 100.0;
   
+  Future<PermissionStatus> checkLocationPermission() async {
+    return await Permission.location.status;
+  }
+  
   Future<bool> requestLocationPermission() async {
-    final status = await Permission.location.request();
-    return status == PermissionStatus.granted;
+    final status = await Permission.location.status;
+    
+    // If already granted, return true
+    if (status == PermissionStatus.granted) {
+      return true;
+    }
+    
+    // If permanently denied, return false (user needs to go to settings)
+    if (status == PermissionStatus.permanentlyDenied) {
+      return false;
+    }
+    
+    // Request permission
+    final newStatus = await Permission.location.request();
+    return newStatus == PermissionStatus.granted;
   }
   
   Future<bool> isLocationServiceEnabled() async {
     return await Geolocator.isLocationServiceEnabled();
   }
   
-  Future<Position?> getCurrentPosition() async {
+  Future<Position?> getCurrentPosition({bool showError = false}) async {
     try {
+      // Check if location service is enabled
       if (!await isLocationServiceEnabled()) {
-        throw Exception('Location service is disabled');
+        if (showError) {
+          print('Location service is disabled. Please enable location services in settings.');
+        }
+        return null;
       }
       
-      final permission = await requestLocationPermission();
-      if (!permission) {
-        throw Exception('Location permission denied');
+      // Check current permission status
+      final permissionStatus = await checkLocationPermission();
+      
+      // If permanently denied, don't try to request again
+      if (permissionStatus == PermissionStatus.permanentlyDenied) {
+        if (showError) {
+          print('Location permission is permanently denied. Please enable it in app settings.');
+        }
+        return null;
+      }
+      
+      // Request permission if needed
+      final hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
+        if (showError) {
+          print('Location permission denied. Please grant location permission in app settings.');
+        }
+        return null;
       }
       
       final position = await Geolocator.getCurrentPosition(
@@ -46,7 +84,10 @@ class LocationService {
       _currentPosition = position;
       return position;
     } catch (e) {
-      print('Error getting current position: $e');
+      // Only print error if explicitly requested to avoid spam
+      if (showError) {
+        print('Error getting current position: $e');
+      }
       return null;
     }
   }
@@ -63,9 +104,9 @@ class LocationService {
       }
       
       _positionStream = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
+        locationSettings: LocationSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: _minDistanceChange,
+          distanceFilter: _minDistanceChange.toInt(),
         ),
       ).listen(
         (Position position) {
@@ -215,7 +256,7 @@ class LocationService {
         if (distance > maxDistance) continue;
         
         if (availableDays.isNotEmpty) {
-          final walkDay = specificTime?.weekday % 7 ?? DateTime.now().weekday % 7;
+          final walkDay = (specificTime?.weekday ?? DateTime.now().weekday) % 7;
           if (!walker.availableDays.contains(walkDay)) continue;
         }
         

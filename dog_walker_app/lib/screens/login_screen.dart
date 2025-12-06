@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_provider.dart';
 import '../utils/validators.dart';
 import 'signup_screen.dart';
@@ -114,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'PawPal',
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: Colors.blue[600],
@@ -124,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 Text(
                   t.t('welcome_back'),
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
                   ),
@@ -181,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _resetPassword,
                     child: Text(
                       t.t('forgot_password'),
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         color: Colors.blue[600],
                         fontSize: 14,
                       ),
@@ -215,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             )
                           : Text(
                               t.t('sign_in'),
-                              style: GoogleFonts.poppins(
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -233,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         t.t('or'),
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 14,
                         ),
@@ -250,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Text(
                       t.t('dont_have_account'),
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         color: Colors.grey[600],
                       ),
                     ),
@@ -265,9 +264,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       child: Text(
                         t.t('sign_up'),
-                        style: GoogleFonts.poppins(
+                        style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: Colors.blue[600],
+                          color: Colors.blue,
                         ),
                       ),
                     ),

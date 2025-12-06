@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../models/walk_request_model.dart';
 import '../models/walk_application_model.dart';
 import '../models/user_model.dart';
+import '../models/dog_traits.dart';
 import '../services/walk_application_service.dart';
 import '../services/user_service.dart';
 import '../services/walk_request_service.dart';
 import '../services/auth_provider.dart';
-import '../services/notification_service.dart';
+import '../services/schedule_conflict_service.dart';
 import 'walker_profile_view_screen.dart';
 
 /// Screen for owners to view and manage walker applications for a walk request.
@@ -30,12 +32,17 @@ class _WalkApplicationListScreenState
       WalkApplicationService();
   final UserService _userService = UserService();
   final WalkRequestService _walkRequestService = WalkRequestService();
-  final NotificationService _notificationService = NotificationService();
 
   List<WalkApplicationModel> _applications = [];
+  List<WalkApplicationModel> _filteredApplications = [];
   Map<String, UserModel> _walkerProfiles = {};
   bool _loading = true;
   bool _processing = false;
+  
+  // Filter state for owners
+  ExperienceLevel? _selectedExperienceLevel;
+  double _minRating = 0.0;
+  List<DogSize> _selectedPreferredSizes = [];
 
   @override
   void initState() {
@@ -65,9 +72,11 @@ class _WalkApplicationListScreenState
       if (!mounted) return;
       setState(() {
         _applications = applications;
+        _filteredApplications = applications;
         _walkerProfiles = profiles;
         _loading = false;
       });
+      _applyFilters();
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -90,13 +99,131 @@ class _WalkApplicationListScreenState
       return;
     }
 
-    // Show confirmation dialog
+    // Check for schedule conflicts
+    bool hasConflict = false;
+    List<({WalkRequestModel walk, double severity})> conflicts = [];
+    List<DateTime> alternativeTimes = [];
+
+    try {
+      final existingWalks = await _walkRequestService.getRequestsByWalker(application.walkerId);
+      final tempRequest = widget.walkRequest.copyWith(walkerId: application.walkerId);
+      
+      hasConflict = ScheduleConflictService.hasConflict(
+        newWalk: tempRequest,
+        existingWalks: existingWalks,
+        walkerId: application.walkerId,
+      );
+
+      if (hasConflict) {
+        conflicts = ScheduleConflictService.findConflicts(
+          newWalk: tempRequest,
+          existingWalks: existingWalks,
+          walkerId: application.walkerId,
+        );
+
+        alternativeTimes = ScheduleConflictService.suggestAlternativeTimes(
+          requestedWalk: tempRequest,
+          existingWalks: existingWalks,
+          walkerId: application.walkerId,
+          durationMinutes: widget.walkRequest.duration,
+          maxSuggestions: 3,
+        );
+      }
+    } catch (e) {
+      print('Error checking schedule conflicts: $e');
+    }
+
+    // Show confirmation dialog with conflict info if needed
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Select Walker'),
-        content: Text(
-          'Are you sure you want to select ${walker.fullName} for this walk?',
+        title: Row(
+          children: [
+            if (hasConflict)
+              Icon(Icons.warning, color: Colors.orange[700])
+            else
+              Icon(Icons.check_circle, color: Colors.green[600]),
+            const SizedBox(width: 8),
+            Text(hasConflict ? 'Schedule Conflict' : 'Select Walker'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hasConflict
+                    ? '${walker.fullName} has a schedule conflict with this walk time.'
+                    : 'Are you sure you want to select ${walker.fullName} for this walk?',
+              ),
+              if (hasConflict) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Conflicting walks:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...conflicts.map((conflict) {
+                  final walk = conflict.walk;
+                  final severity = conflict.severity;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: severity > 0.7 ? Colors.red : Colors.orange,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${_formatDateTime(walk.startTime)} - ${_formatDateTime(walk.endTime)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: severity > 0.7 ? Colors.red : Colors.orange,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                if (alternativeTimes.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Suggested alternative times:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...alternativeTimes.map((time) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.schedule, size: 16, color: Colors.green[700]),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatDateTime(time),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+                const SizedBox(height: 16),
+                const Text(
+                  'You can still select this walker, but they may need to reschedule.',
+                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -106,9 +233,9 @@ class _WalkApplicationListScreenState
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[600],
+              backgroundColor: hasConflict ? Colors.orange[700] : Colors.green[600],
             ),
-            child: const Text('Select'),
+            child: Text(hasConflict ? 'Select Anyway' : 'Select'),
           ),
         ],
       ),
@@ -137,26 +264,18 @@ class _WalkApplicationListScreenState
       );
       await _walkRequestService.updateWalkRequest(updatedRequest);
 
-      // Notify the selected walker
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      final ownerId = auth.currentUserId;
-      if (ownerId != null) {
-        await _notificationService.sendNotification(
-          userId: application.walkerId,
-          title: 'Application Accepted',
-          body:
-              'Your application for the walk at ${widget.walkRequest.location} has been accepted!',
-          relatedId: widget.walkRequest.id,
-          type: 'application_accepted',
-          createdBy: ownerId,
-        );
-      }
+      // Notification removed
 
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Walker selected successfully!'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: Text(
+            hasConflict
+                ? 'Walker selected. Please note: schedule conflict detected.'
+                : 'Walker selected successfully!',
+          ),
+          backgroundColor: hasConflict ? Colors.orange : Colors.green,
         ),
       );
 
@@ -170,6 +289,158 @@ class _WalkApplicationListScreenState
         ),
       );
     }
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return DateFormat('MMM d, y • h:mm a').format(dateTime);
+  }
+
+
+  void _applyFilters() {
+    List<WalkApplicationModel> filtered = List.from(_applications);
+    
+    for (final application in _applications) {
+      final walker = _walkerProfiles[application.walkerId];
+      if (walker == null) {
+        filtered.remove(application);
+        continue;
+      }
+      
+      // Filter by experience level
+      if (_selectedExperienceLevel != null) {
+        if (walker.experienceLevel != _selectedExperienceLevel) {
+          filtered.remove(application);
+          continue;
+        }
+      }
+      
+      // Filter by minimum rating
+      if (walker.rating < _minRating) {
+        filtered.remove(application);
+        continue;
+      }
+      
+      // Filter by preferred dog sizes (if walker prefers specific sizes)
+      if (_selectedPreferredSizes.isNotEmpty && walker.preferredDogSizes.isNotEmpty) {
+        final hasMatchingSize = _selectedPreferredSizes.any(
+          (size) => walker.preferredDogSizes.contains(size),
+        );
+        if (!hasMatchingSize) {
+          filtered.remove(application);
+          continue;
+        }
+      }
+    }
+    
+    setState(() {
+      _filteredApplications = filtered;
+    });
+  }
+
+  void _showFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Filter Walkers'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Experience level filter
+                const Text('Experience Level:', style: TextStyle(fontWeight: FontWeight.bold)),
+                DropdownButtonFormField<ExperienceLevel?>(
+                  value: _selectedExperienceLevel,
+                  decoration: const InputDecoration(
+                    hintText: 'Any experience level',
+                  ),
+                  items: [
+                    const DropdownMenuItem<ExperienceLevel?>(
+                      value: null,
+                      child: Text('Any'),
+                    ),
+                    ...ExperienceLevel.values.map((level) {
+                      return DropdownMenuItem<ExperienceLevel?>(
+                        value: level,
+                        child: Text(level.toString().split('.').last),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() {
+                      _selectedExperienceLevel = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // Minimum rating filter
+                Text('Minimum Rating: ${_minRating.toStringAsFixed(1)}'),
+                Slider(
+                  value: _minRating,
+                  min: 0.0,
+                  max: 5.0,
+                  divisions: 10,
+                  label: _minRating.toStringAsFixed(1),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      _minRating = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // Preferred dog sizes filter
+                const Text('Preferred Dog Sizes:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Wrap(
+                  spacing: 8,
+                  children: DogSize.values.map((size) {
+                    final isSelected = _selectedPreferredSizes.contains(size);
+                    return FilterChip(
+                      label: Text(size.toString().split('.').last),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setDialogState(() {
+                          if (selected) {
+                            _selectedPreferredSizes.add(size);
+                          } else {
+                            _selectedPreferredSizes.remove(size);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setDialogState(() {
+                  _selectedExperienceLevel = null;
+                  _minRating = 0.0;
+                  _selectedPreferredSizes.clear();
+                });
+              },
+              child: const Text('Clear All'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _applyFilters();
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _viewWalkerProfile(WalkApplicationModel application) async {
@@ -202,37 +473,101 @@ class _WalkApplicationListScreenState
       appBar: AppBar(
         title: const Text('Walker Applications'),
         backgroundColor: Colors.blue[600],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: _showFilterDialog,
+            tooltip: 'Filter walkers',
+          ),
+        ],
       ),
       body: _processing
           ? const Center(child: CircularProgressIndicator())
           : _loading
               ? const Center(child: CircularProgressIndicator())
-              : _applications.isEmpty
+              : _filteredApplications.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.people_outline,
+                            _applications.isEmpty
+                                ? Icons.people_outline
+                                : Icons.filter_alt_off,
                             size: 64,
                             color: Colors.grey[400],
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'No applications yet',
+                            _applications.isEmpty
+                                ? 'No applications yet'
+                                : 'No walkers match your filters',
                             style: TextStyle(
                               fontSize: 18,
                               color: Colors.grey[600],
                             ),
                           ),
+                          if (_applications.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _selectedExperienceLevel = null;
+                                  _minRating = 0.0;
+                                  _selectedPreferredSizes.clear();
+                                });
+                                _applyFilters();
+                              },
+                              child: const Text('Clear Filters'),
+                            ),
+                          ],
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _applications.length,
-                      itemBuilder: (context, index) {
-                        final application = _applications[index];
+                  : Column(
+                      children: [
+                        if (_selectedExperienceLevel != null ||
+                            _minRating > 0.0 ||
+                            _selectedPreferredSizes.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            color: Colors.blue[50],
+                            child: Row(
+                              children: [
+                                const Icon(Icons.filter_alt, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${_filteredApplications.length} of ${_applications.length} walkers',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.blue[800],
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedExperienceLevel = null;
+                                      _minRating = 0.0;
+                                      _selectedPreferredSizes.clear();
+                                    });
+                                    _applyFilters();
+                                  },
+                                  child: const Text('Clear', style: TextStyle(fontSize: 12)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _filteredApplications.length,
+                            itemBuilder: (context, index) {
+                              final application = _filteredApplications[index];
                         final walker = _walkerProfiles[application.walkerId];
 
                         if (walker == null) {
@@ -347,6 +682,9 @@ class _WalkApplicationListScreenState
                           ),
                         );
                       },
+                    ),
+                        ),
+                      ],
                     ),
     );
   }

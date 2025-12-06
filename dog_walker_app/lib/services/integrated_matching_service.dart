@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../models/dog_model.dart';
 import '../models/walk_request_model.dart';
-import 'optimization_matching_service.dart';
 import 'location_service.dart';
 import 'matching_service.dart';
 
@@ -20,7 +19,6 @@ class IntegratedMatchingService {
     required WalkRequestModel walkRequest,
     required UserModel owner,
     required DogModel dog,
-    OptimizationCriteria criteria = OptimizationCriteria.distanceAndTime,
     int maxResults = 10,
     bool useLocationFiltering = true,
   }) async {
@@ -64,14 +62,6 @@ class IntegratedMatchingService {
         );
       }
 
-      final optimalMatches = OptimizationMatchingService.findOptimalMatches(
-        candidateWalkers,
-        [walkRequest],
-        {owner.id: owner},
-        {dog.id: dog},
-        criteria: criteria,
-      );
-
       final traditionalMatches = MatchingService.findCompatibleMatches(
         candidateWalkers,
         walkRequest,
@@ -80,9 +70,9 @@ class IntegratedMatchingService {
         maxResults: maxResults,
       );
 
-      final integratedMatches = _integrateMatchingResults(
-        optimalMatches,
+      final integratedMatches = _convertToIntegratedMatches(
         traditionalMatches,
+        owner,
         maxResults,
       );
 
@@ -91,9 +81,8 @@ class IntegratedMatchingService {
       return IntegratedMatchingResult(
         matches: integratedMatches,
         quality: quality,
-        method: 'integrated_optimization',
+        method: 'weighted_scoring',
         traditionalMatches: traditionalMatches,
-        optimalMatches: optimalMatches,
       );
     } catch (e) {
       print('Error in integrated matching: $e');
@@ -179,52 +168,36 @@ class IntegratedMatchingService {
     }
   }
 
-  List<IntegratedMatch> _integrateMatchingResults(
-    List<OptimalMatch> optimalMatches,
+  List<IntegratedMatch> _convertToIntegratedMatches(
     List<MatchResult> traditionalMatches,
+    UserModel owner,
     int maxResults,
   ) {
-    final Map<String, IntegratedMatch> integratedMap = {};
+    final List<IntegratedMatch> matches = [];
 
-    for (final optimal in optimalMatches) {
-      final score = _calculateIntegratedScore(optimal, true);
-      integratedMap[optimal.walker.id] = IntegratedMatch(
-        walker: optimal.walker,
-        score: score,
-        distance: optimal.distance,
-        lastLocationUpdate: DateTime.now(),
-        isRealTime: false,
-        optimalMatch: optimal,
+    for (final match in traditionalMatches) {
+      double distance = 0.0;
+      if (owner.location != null && match.walker.location != null) {
+        distance = LocationService.calculateDistance(
+          owner.location!,
+          match.walker.location!,
+        );
+      }
+
+      matches.add(
+        IntegratedMatch(
+          walker: match.walker,
+          score: match.score,
+          distance: distance,
+          lastLocationUpdate: DateTime.now(),
+          isRealTime: false,
+          traditionalMatch: match,
+        ),
       );
     }
 
-    for (final traditional in traditionalMatches) {
-      if (!integratedMap.containsKey(traditional.walker.id)) {
-        final score = _calculateIntegratedScore(traditional, false);
-        integratedMap[traditional.walker.id] = IntegratedMatch(
-          walker: traditional.walker,
-          score: score,
-          distance: 0.0,
-          lastLocationUpdate: DateTime.now(),
-          isRealTime: false,
-          traditionalMatch: traditional,
-        );
-      }
-    }
-
-    final results = integratedMap.values.toList()
-      ..sort((a, b) => b.score.compareTo(a.score));
-
-    return results.take(maxResults).toList();
-  }
-
-  double _calculateIntegratedScore(dynamic match, bool isOptimal) {
-    if (isOptimal && match is OptimalMatch) {
-      return (1.0 - (match.totalCost / 100.0)).clamp(0.0, 1.0);
-    } else if (match is MatchResult) {
-      return match.score;
-    }
-    return 0.0;
+    matches.sort((a, b) => b.score.compareTo(a.score));
+    return matches.take(maxResults).toList();
   }
 
   List<String> _getTimeSlot(DateTime time) {
@@ -290,7 +263,6 @@ class IntegratedMatchingResult {
   final String method;
   final String? error;
   final List<MatchResult>? traditionalMatches;
-  final List<OptimalMatch>? optimalMatches;
 
   IntegratedMatchingResult({
     required this.matches,
@@ -298,7 +270,6 @@ class IntegratedMatchingResult {
     required this.method,
     this.error,
     this.traditionalMatches,
-    this.optimalMatches,
   });
 
   @override
@@ -313,7 +284,6 @@ class IntegratedMatch {
   final double distance;
   final DateTime lastLocationUpdate;
   final bool isRealTime;
-  final OptimalMatch? optimalMatch;
   final MatchResult? traditionalMatch;
 
   IntegratedMatch({
@@ -322,12 +292,34 @@ class IntegratedMatch {
     required this.distance,
     required this.lastLocationUpdate,
     required this.isRealTime,
-    this.optimalMatch,
     this.traditionalMatch,
   });
 
   @override
   String toString() {
     return 'IntegratedMatch(walker: ${walker.fullName}, score: ${score.toStringAsFixed(3)}, distance: ${distance.toStringAsFixed(2)}km)';
+  }
+}
+
+class MatchingQualityAnalysis {
+  final int totalMatches;
+  final double averageDistance;
+  final double averageCost;
+  final int timeConflicts;
+  final double totalDistance;
+  final double efficiency;
+
+  MatchingQualityAnalysis({
+    required this.totalMatches,
+    required this.averageDistance,
+    required this.averageCost,
+    required this.timeConflicts,
+    required this.totalDistance,
+    required this.efficiency,
+  });
+
+  @override
+  String toString() {
+    return 'MatchingQuality(total: $totalMatches, avgDistance: ${averageDistance.toStringAsFixed(2)}km, efficiency: ${efficiency.toStringAsFixed(1)}%)';
   }
 }

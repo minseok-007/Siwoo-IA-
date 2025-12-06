@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/message_service.dart';
-import '../services/notification_service.dart';
 import '../models/message_model.dart';
 import '../models/walk_request_model.dart';
 import '../l10n/app_localizations.dart';
@@ -30,7 +29,6 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final MessageService _service = MessageService();
-  final NotificationService _notificationService = NotificationService();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = true;
@@ -104,7 +102,6 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       await _service.sendMessage(msg);
       _controller.clear();
-      await _maybeNotifyOtherUser(text);
 
       // Scroll to bottom after sending message
       Future.delayed(const Duration(milliseconds: 100), () {
@@ -131,29 +128,6 @@ class _ChatScreenState extends State<ChatScreen> {
     return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
   }
 
-  Future<void> _maybeNotifyOtherUser(String body) async {
-    final recipientId = widget.otherUserId;
-    if (recipientId == null || recipientId.isEmpty || recipientId == widget.userId) {
-      return;
-    }
-
-    final t = AppLocalizations.of(context);
-    String notificationBody = body;
-    if (widget.walkRequest != null) {
-      final formatted = DateFormat('MMM d • h:mm a').format(widget.walkRequest!.startTime);
-      notificationBody =
-          '${widget.otherUserName ?? t.t('chat')}: ${widget.walkRequest!.location} ($formatted)\n$body';
-    }
-
-    await _notificationService.sendNotification(
-      userId: recipientId,
-      title: widget.otherUserName ?? t.t('messages'),
-      body: notificationBody,
-      relatedId: widget.walkRequest?.id ?? widget.chatId,
-      type: 'message',
-      createdBy: widget.userId,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
