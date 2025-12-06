@@ -21,7 +21,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late String _fullName;
-  late String _phoneNumber;
 
   // Walker-specific
   ExperienceLevel _experienceLevel = ExperienceLevel.beginner;
@@ -40,7 +39,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     final user = Provider.of<AuthProvider>(context, listen: false).userModel;
     _fullName = user?.fullName ?? '';
-    _phoneNumber = user?.phoneNumber ?? '';
     if (user != null) {
       _experienceLevel = user.experienceLevel;
       _preferredDogSizes = List<DogSize>.from(user.preferredDogSizes);
@@ -232,19 +230,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 labelText: AppLocalizations.of(context).t('email'),
                 border: const OutlineInputBorder(),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              initialValue: _phoneNumber,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context).t('phone_number'),
-                border: const OutlineInputBorder(),
-              ),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? AppLocalizations.of(context).t('enter_phone')
-                  : null,
-              onSaved: (v) => _phoneNumber = v!.trim(),
             ),
           ],
         ),
@@ -513,7 +498,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final updated = user.copyWith(
         fullName: _fullName,
-        phoneNumber: _phoneNumber,
         experienceLevel: _experienceLevel,
         preferredDogSizes: _preferredDogSizes,
         maxDistance: _maxDistance,

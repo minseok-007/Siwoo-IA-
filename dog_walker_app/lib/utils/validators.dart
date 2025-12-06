@@ -40,18 +40,6 @@ class Validators {
     return null;
   }
 
-  static String? validateConfirmPassword(String? value, String password, [BuildContext? context]) {
-    if (value == null || value.isEmpty) {
-      return context != null ? AppLocalizations.of(context).t('err_confirm_required') : 'Please confirm your password';
-    }
-    
-    if (value != password) {
-      return context != null ? AppLocalizations.of(context).t('err_password_mismatch') : 'Passwords do not match';
-    }
-    
-    return null;
-  }
-
   static String? validateFullName(String? value, [BuildContext? context]) {
     if (value == null || value.isEmpty) {
       return context != null ? AppLocalizations.of(context).t('err_fullname_required') : 'Full name is required';
@@ -65,21 +53,6 @@ class Validators {
     final nameRegex = RegExp(r'^[a-zA-Z\s]+$');
     if (!nameRegex.hasMatch(value)) {
       return context != null ? AppLocalizations.of(context).t('err_fullname_chars') : 'Full name can only contain letters and spaces';
-    }
-    
-    return null;
-  }
-
-  static String? validatePhoneNumber(String? value, [BuildContext? context]) {
-    if (value == null || value.isEmpty) {
-      return context != null ? AppLocalizations.of(context).t('err_phone_required') : 'Phone number is required';
-    }
-    
-    // Remove all non-digit characters for validation
-    String digitsOnly = value.replaceAll(RegExp(r'[^\d]'), '');
-    
-    if (digitsOnly.length < 10 || digitsOnly.length > 15) {
-      return context != null ? AppLocalizations.of(context).t('err_phone_invalid') : 'Please enter a valid phone number';
     }
     
     return null;

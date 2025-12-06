@@ -57,7 +57,6 @@ class AuthService {
   /// - [email]: User's email address (must be valid and unique)
   /// - [password]: User's password (minimum 6 characters)
   /// - [fullName]: User's display name
-  /// - [phoneNumber]: User's contact number
   /// - [userType]: Whether user is a dog owner or dog walker
   /// 
   /// Returns:
@@ -69,7 +68,6 @@ class AuthService {
     required String email,
     required String password,
     required String fullName,
-    required String phoneNumber,
     required UserType userType,
   }) async {
     try {
@@ -84,17 +82,26 @@ class AuthService {
         id: userCredential.user!.uid,
         email: email,
         fullName: fullName,
-        phoneNumber: phoneNumber,
         userType: userType,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
-      // Step 3: Persist user data to Firestore
-      await _firestore
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .set(userModel.toFirestore());
+      // Step 3: Persist user data to Firestore (wait for completion)
+      // We await this operation to ensure data is saved before returning.
+      // This prevents issues where the user document might not exist immediately after signup.
+      try {
+        await _firestore
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set(userModel.toFirestore());
+        print('User data saved to Firestore successfully');
+      } catch (e) {
+        print('Error saving user data to Firestore: $e');
+        // Re-throw to ensure user knows about the error
+        // The Firebase Auth account is already created, but Firestore save failed
+        throw Exception('Failed to save user profile: $e');
+      }
 
       return userCredential;
     } catch (e) {
@@ -103,7 +110,20 @@ class AuthService {
     }
   }
 
-  // Sign in with email and password
+  /// Signs in a user with email and password.
+  /// 
+  /// This method authenticates the user with Firebase Auth.
+  /// 
+  /// Parameters:
+  /// - [email]: User's email address
+  /// - [password]: User's password
+  /// 
+  /// Returns:
+  /// - [UserCredential] containing authentication details on success
+  /// 
+  /// Throws:
+  /// - [Exception] with generic "Invalid email or password" message for security.
+  ///   This prevents email enumeration attacks by not revealing whether the email exists.
   Future<UserCredential> signInWithEmailAndPassword({
     required String email,
     required String password,
@@ -114,7 +134,9 @@ class AuthService {
         password: password,
       );
     } catch (e) {
-      throw Exception('Failed to sign in: $e');
+      // Return generic error message for security (don't reveal if email exists)
+      // This prevents attackers from determining which emails are registered
+      throw Exception('Invalid email or password');
     }
   }
 

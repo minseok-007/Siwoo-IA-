@@ -7,13 +7,13 @@ import '../models/user_model.dart';
 import '../models/walk_request_model.dart';
 import '../services/walk_request_service.dart';
 import '../services/user_service.dart';
+import '../services/message_service.dart';
+import '../models/message_model.dart';
 import 'walk_request_form_screen.dart';
 import 'dog_list_screen.dart';
 import 'walk_request_list_screen.dart';
 import 'chat_list_screen.dart';
 import 'scheduled_walks_screen.dart';
-import 'optimal_schedule_screen.dart';
-import 'recommendations_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 import 'walk_request_detail_screen.dart';
@@ -34,9 +34,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final WalkRequestService _walkRequestService = WalkRequestService();
   final UserService _userService = UserService();
+  final MessageService _messageService = MessageService();
   StreamSubscription<QuerySnapshot>? _walkRequestSubscription;
   StreamSubscription<QuerySnapshot>? _applicationSubscription;
   StreamSubscription<QuerySnapshot>? _ownerApplicationSubscription; // For owners to see new applications
+  StreamSubscription<QuerySnapshot>? _messageSubscription; // For unread messages
   String? _lastNotifiedRequestId;
   String? _lastNotifiedApplicationId;
   String? _lastNotifiedOwnerApplicationId;
@@ -44,14 +46,24 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasShownInitialApplicationNotification = false;
   bool _hasShownInitialOwnerApplicationNotification = false;
   int _notificationCount = 0;
+  int _unreadMessageCount = 0;
   Set<String> _readNotificationIds = {}; // Track read notifications
+  Map<String, DateTime> _lastReadMessageTime = {}; // Track last read time per chat
 
   @override
   void initState() {
     super.initState();
+    // Load read states first, then setup listeners and counts
+    _initializeReadStates();
+  }
+
+  Future<void> _initializeReadStates() async {
+    await _loadReadNotifications();
+    await _loadReadMessageTimes();
     _setupWalkRequestListener();
+    _setupMessageListener();
     _loadNotificationCount();
-    _loadReadNotifications();
+    _loadUnreadMessageCount();
   }
 
   Future<void> _loadReadNotifications() async {
@@ -119,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
       List<String> notificationIds = [];
 
       if (user.userType == UserType.dogOwner) {
-        // Get all accepted walk requests with walker
+        // Get all accepted walk requests with walker (only unread ones)
         final acceptedQuery = await FirebaseFirestore.instance
             .collection('walk_requests')
             .where('ownerId', isEqualTo: currentUserId)
@@ -128,12 +140,14 @@ class _HomeScreenState extends State<HomeScreen> {
         
         for (var doc in acceptedQuery.docs) {
           final data = doc.data();
-          if (data['walkerId'] != null && data['walkerId'].toString().isNotEmpty) {
+          if (data['walkerId'] != null && 
+              data['walkerId'].toString().isNotEmpty &&
+              !_readNotificationIds.contains(doc.id)) {
             notificationIds.add(doc.id);
           }
         }
 
-        // Get all pending applications
+        // Get all pending applications (only unread ones)
         final applicationQuery = await FirebaseFirestore.instance
             .collection('walk_applications')
             .where('ownerId', isEqualTo: currentUserId)
@@ -141,10 +155,12 @@ class _HomeScreenState extends State<HomeScreen> {
             .get();
         
         for (var doc in applicationQuery.docs) {
-          notificationIds.add(doc.id);
+          if (!_readNotificationIds.contains(doc.id)) {
+            notificationIds.add(doc.id);
+          }
         }
       } else {
-        // Get all accepted applications
+        // Get all accepted applications (only unread ones)
         final query = await FirebaseFirestore.instance
             .collection('walk_applications')
             .where('walkerId', isEqualTo: currentUserId)
@@ -152,7 +168,9 @@ class _HomeScreenState extends State<HomeScreen> {
             .get();
         
         for (var doc in query.docs) {
-          notificationIds.add(doc.id);
+          if (!_readNotificationIds.contains(doc.id)) {
+            notificationIds.add(doc.id);
+          }
         }
       }
 
@@ -233,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _walkRequestSubscription?.cancel();
     _applicationSubscription?.cancel();
     _ownerApplicationSubscription?.cancel();
+    _messageSubscription?.cancel();
     super.dispose();
   }
 
@@ -360,6 +379,118 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
       });
+    }
+  }
+
+  void _setupMessageListener() {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = auth.currentUserId;
+    final user = auth.userModel;
+    
+    if (currentUserId == null || user == null) return;
+
+    // Listen to messages in all chats where user is a participant
+    // We'll listen to messages subcollections directly
+    final chatsQuery = FirebaseFirestore.instance
+        .collection('chats');
+
+    _messageSubscription = chatsQuery.snapshots().listen((snapshot) {
+      if (!mounted) return;
+      
+      // Update unread message count when chats change
+      _updateUnreadMessageCount();
+    });
+  }
+
+  Future<void> _loadUnreadMessageCount() async {
+    await _updateUnreadMessageCount();
+  }
+
+  Future<void> _updateUnreadMessageCount() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = auth.currentUserId;
+    final user = auth.userModel;
+    
+    if (currentUserId == null || user == null) return;
+
+    try {
+      int unreadCount = 0;
+      
+      // Get all chats where user is a participant
+      final chatsQuery = await FirebaseFirestore.instance
+          .collection('chats')
+          .get();
+      
+      for (var chatDoc in chatsQuery.docs) {
+        final chatData = chatDoc.data();
+        final chatId = chatDoc.id;
+        
+        // Check if user is a participant
+        final ownerId = chatData['ownerId'] as String?;
+        final walkerId = chatData['walkerId'] as String?;
+        
+        bool isParticipant = false;
+        if (user.userType == UserType.dogOwner && ownerId == currentUserId) {
+          isParticipant = true;
+        } else if (user.userType == UserType.dogWalker && walkerId == currentUserId) {
+          isParticipant = true;
+        }
+        
+        if (!isParticipant) continue;
+        
+        // Get last read time for this chat
+        final lastReadTime = _lastReadMessageTime[chatId];
+        
+        // Get last message to check if it's unread (more efficient than counting all)
+        final lastMessage = await _messageService.getLastMessage(chatId);
+        if (lastMessage != null && lastMessage.senderId != currentUserId) {
+          // Check if last message is unread
+          if (lastReadTime == null || lastMessage.timestamp.isAfter(lastReadTime)) {
+            // Get approximate count by checking recent messages only
+            try {
+              final recentMessages = await FirebaseFirestore.instance
+                  .collection('chats')
+                  .doc(chatId)
+                  .collection('messages')
+                  .orderBy('timestamp', descending: true)
+                  .limit(50)
+                  .get();
+              
+              int chatUnreadCount = 0;
+              for (var msgDoc in recentMessages.docs) {
+                final msgData = msgDoc.data();
+                final msgSenderId = msgData['senderId'] as String?;
+                final msgTimestamp = msgData['timestamp'] as Timestamp?;
+                
+                if (msgSenderId == currentUserId) continue;
+                
+                if (lastReadTime != null && msgTimestamp != null) {
+                  if (msgTimestamp.toDate().isAfter(lastReadTime)) {
+                    chatUnreadCount++;
+                  } else {
+                    break; // Messages are ordered, so we can break early
+                  }
+                } else {
+                  chatUnreadCount++;
+                }
+              }
+              
+              unreadCount += chatUnreadCount;
+            } catch (e) {
+              // If error, just count 1 for having unread messages
+              unreadCount += 1;
+            }
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _unreadMessageCount = unreadCount;
+        });
+      }
+    } catch (e) {
+      print('Error updating unread message count: $e');
     }
   }
 
@@ -684,38 +815,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
-                  const SizedBox(height: 12),
-                  _buildActionCard(
-                    context,
-                    'Optimal Schedule',
-                    'AI-powered schedule optimization',
-                    Icons.auto_awesome,
-                    Colors.purple,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const OptimalScheduleScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildActionCard(
-                    context,
-                    'AI Recommendations',
-                    'Personalized recommendations using ML',
-                    Icons.recommend,
-                    Colors.pink,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const RecommendationsScreen(),
-                        ),
-                      );
-                    },
-                  ),
                 ],
 
                 const SizedBox(height: 24),
@@ -737,14 +836,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   t.t('messages_desc'),
                   Icons.chat_bubble_outline,
                   Colors.indigo,
-                  () {
-                    Navigator.push(
+                  () async {
+                    // Mark all messages as read when opening chat list
+                    await _markAllMessagesAsRead();
+                    
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => ChatListScreen(userId: user.id),
                       ),
                     );
+                    // Refresh unread count when returning
+                    _loadUnreadMessageCount();
                   },
+                  badgeCount: _unreadMessageCount,
                 ),
                 const SizedBox(height: 12),
                 
@@ -787,14 +892,125 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _markAllMessagesAsRead() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = auth.currentUserId;
+    final user = auth.userModel;
+    
+    if (currentUserId == null || user == null) return;
+
+    try {
+      final now = DateTime.now();
+      
+      // Get all chats where user is a participant
+      final chatsQuery = await FirebaseFirestore.instance
+          .collection('chats')
+          .get();
+      
+      for (var chatDoc in chatsQuery.docs) {
+        final chatData = chatDoc.data();
+        final chatId = chatDoc.id;
+        
+        // Check if user is a participant
+        final ownerId = chatData['ownerId'] as String?;
+        final walkerId = chatData['walkerId'] as String?;
+        
+        bool isParticipant = false;
+        if (user.userType == UserType.dogOwner && ownerId == currentUserId) {
+          isParticipant = true;
+        } else if (user.userType == UserType.dogWalker && walkerId == currentUserId) {
+          isParticipant = true;
+        }
+        
+        if (isParticipant) {
+          // Get last message to set read time
+          final lastMessage = await _messageService.getLastMessage(chatId);
+          if (lastMessage != null) {
+            // Mark as read (use last message time or now, whichever is later)
+            final readTime = lastMessage.timestamp.isAfter(now) ? lastMessage.timestamp : now;
+            setState(() {
+              _lastReadMessageTime[chatId] = readTime;
+            });
+          } else {
+            // No messages yet, mark current time
+            setState(() {
+              _lastReadMessageTime[chatId] = now;
+            });
+          }
+        }
+      }
+      
+      // Save to Firestore
+      final timesMap = <String, Timestamp>{};
+      _lastReadMessageTime.forEach((chatId, dateTime) {
+        timesMap[chatId] = Timestamp.fromDate(dateTime);
+      });
+      
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .collection('read_messages')
+          .doc('read_times')
+          .set({
+        'times': timesMap,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      
+      // Update count
+      _updateUnreadMessageCount();
+    } catch (e) {
+      print('Error marking messages as read: $e');
+    }
+  }
+
+  Future<void> _loadReadMessageTimes() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = auth.currentUserId;
+    if (currentUserId == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .collection('read_messages')
+          .doc('read_times')
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        final times = (data?['times'] as Map<String, dynamic>?) ?? {};
+        final readTimes = <String, DateTime>{};
+        times.forEach((chatId, timestamp) {
+          if (timestamp is Timestamp) {
+            readTimes[chatId] = timestamp.toDate();
+          } else if (timestamp is Map) {
+            // Handle nested structure if needed
+            final ts = timestamp['seconds'] as int?;
+            if (ts != null) {
+              readTimes[chatId] = DateTime.fromMillisecondsSinceEpoch(ts * 1000);
+            }
+          }
+        });
+        if (mounted) {
+          setState(() {
+            _lastReadMessageTime = readTimes;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading read message times: $e');
+    }
+  }
+
   Widget _buildActionCard(
     BuildContext context,
     String title,
     String subtitle,
     IconData icon,
     Color color,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    int badgeCount = 0,
+  }) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -807,16 +1023,19 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 24,
+              BadgeWidget(
+                count: badgeCount,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 24,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),

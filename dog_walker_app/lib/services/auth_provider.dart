@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
@@ -54,21 +55,51 @@ class AuthProvider with ChangeNotifier {
     try {
       _userModel = await _authService.getUserData(userId);
       if (_userModel != null) {
-        await _messagingService.initializeForUser(_userModel!.id);
+        // Initialize messaging service asynchronously (don't block)
+        _messagingService.initializeForUser(_userModel!.id).catchError((e) {
+          print('Warning: Failed to initialize messaging service: $e');
+        });
       }
       notifyListeners();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
+      // Re-throw to allow caller to handle
+      rethrow;
     }
   }
 
   /// Handles email/password sign-up and creates the associated user document when successful.
+  /// 
+  /// This method performs a complete registration flow:
+  /// 1. Creates Firebase Auth account and basic Firestore user document
+  /// 2. Creates UserModel with all provided preferences
+  /// 3. Updates Firestore with walker preferences if user is a walker
+  /// 4. Initializes messaging service in background (non-blocking)
+  /// 
+  /// Parameters:
+  /// - [email]: User's email address
+  /// - [password]: User's password
+  /// - [fullName]: User's full name
+  /// - [userType]: Whether user is a dog owner or dog walker
+  /// - [experienceLevel]: Walker's experience level (only used if userType is dogWalker)
+  /// - [maxDistance]: Maximum distance walker is willing to travel (km)
+  /// - [preferredDogSizes]: List of preferred dog sizes
+  /// - [availableDays]: List of available days (0-6, where 0 is Sunday)
+  /// - [preferredTimeSlots]: List of preferred time slots (morning, afternoon, evening)
+  /// - [preferredTemperaments]: List of preferred dog temperaments
+  /// - [preferredEnergyLevels]: List of preferred energy levels
+  /// - [supportedSpecialNeeds]: List of special needs the walker can handle
+  /// 
+  /// Returns:
+  /// - [bool]: true if signup was successful, false otherwise
+  /// 
+  /// Note: Firestore write operations are awaited to ensure data persistence.
+  /// Messaging service initialization is non-blocking to prevent signup delays.
   Future<bool> signUp({
     required String email,
     required String password,
     required String fullName,
-    required String phoneNumber,
     required UserType userType,
     ExperienceLevel experienceLevel = ExperienceLevel.beginner,
     double maxDistance = 10.0,
@@ -83,41 +114,83 @@ class AuthProvider with ChangeNotifier {
     _clearError();
 
     try {
+      // Step 1: Create Firebase Auth account and basic Firestore document
       final userCredential = await _authService.signUpWithEmailAndPassword(
         email: email,
         password: password,
         fullName: fullName,
-        phoneNumber: phoneNumber,
         userType: userType,
       );
       _user = userCredential.user;
-      await _loadUserData(_user!.uid);
-
-      if (userType == UserType.dogWalker && _userModel != null) {
-        final updatedModel = _userModel!.copyWith(
-          experienceLevel: experienceLevel,
-          maxDistance: maxDistance,
-          preferredDogSizes: preferredDogSizes,
-          availableDays: availableDays,
-          preferredTimeSlots: preferredTimeSlots,
-          preferredTemperaments: preferredTemperaments,
-          preferredEnergyLevels: preferredEnergyLevels,
-          supportedSpecialNeeds: supportedSpecialNeeds,
-        );
-        await _authService.updateUserData(updatedModel);
-        _userModel = updatedModel;
-        await _messagingService.initializeForUser(updatedModel.id);
+      
+      // Step 2: Create user model with all preferences
+      _userModel = UserModel(
+        id: _user!.uid,
+        email: email,
+        fullName: fullName,
+        userType: userType,
+        experienceLevel: experienceLevel,
+        maxDistance: maxDistance,
+        preferredDogSizes: preferredDogSizes,
+        availableDays: availableDays,
+        preferredTimeSlots: preferredTimeSlots,
+        preferredTemperaments: preferredTemperaments,
+        preferredEnergyLevels: preferredEnergyLevels,
+        supportedSpecialNeeds: supportedSpecialNeeds,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      
+      // Step 3: Update Firestore with walker preferences if needed
+      if (userType == UserType.dogWalker) {
+        try {
+          await _authService.updateUserData(_userModel!);
+          print('Walker preferences saved to Firestore');
+        } catch (e) {
+          print('Warning: Failed to update walker preferences: $e');
+          // Don't fail signup if preferences update fails
+        }
       }
+      
+      // Step 4: Initialize messaging service in background (non-blocking)
+      _messagingService.initializeForUser(_userModel!.id).catchError((e) {
+        print('Warning: Failed to initialize messaging service: $e');
+      });
+      
       _setLoading(false);
+      notifyListeners();
       return true;
     } catch (e) {
       _setError(e.toString());
       _setLoading(false);
+      notifyListeners();
+      print('SignUp error: $e');
       return false;
     }
   }
 
   /// Handles email/password sign-in and refreshes the user document on success.
+  /// 
+  /// This method performs authentication and loads user data:
+  /// 1. Authenticates with Firebase Auth using email/password
+  /// 2. Loads user data from Firestore with retry logic (handles eventual consistency)
+  /// 3. Returns success/failure status
+  /// 
+  /// Parameters:
+  /// - [email]: User's email address
+  /// - [password]: User's password
+  /// 
+  /// Returns:
+  /// - [bool]: true if sign-in was successful, false otherwise
+  /// 
+  /// Error Handling:
+  /// - All errors are caught and converted to generic "Invalid email or password" message
+  ///   for security (prevents email enumeration attacks)
+  /// - Retries loading user data up to 3 times with 500ms delays to handle Firestore
+  ///   eventual consistency issues
+  /// 
+  /// Note: If user data doesn't exist in Firestore after retries, it's treated as
+  /// a login failure for security reasons.
   Future<bool> signIn({required String email, required String password}) async {
     _setLoading(true);
     _clearError();
@@ -128,12 +201,37 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
       _user = userCredential.user;
-      await _loadUserData(_user!.uid);
+      
+      // Retry loading user data if it fails
+      // This handles Firestore's eventual consistency where the user document
+      // might not be immediately available after creation
+      int retries = 3;
+      while (retries > 0) {
+        try {
+          await _loadUserData(_user!.uid);
+          break;
+        } catch (e) {
+          retries--;
+          if (retries > 0) {
+            // Wait before retrying to allow Firestore to propagate
+            await Future.delayed(const Duration(milliseconds: 500));
+          } else {
+            // If user data doesn't exist after all retries, treat as login failure
+            // This prevents unauthorized access and maintains security
+            throw Exception('Invalid email or password');
+          }
+        }
+      }
+      
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(e.toString());
+      // Set generic error message for security
+      // Never reveal specific error details (wrong password, email doesn't exist, etc.)
+      // to prevent email enumeration and other security attacks
+      _setError('Invalid email or password');
       _setLoading(false);
+      print('SignIn error: $e');
       return false;
     }
   }

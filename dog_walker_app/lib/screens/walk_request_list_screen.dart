@@ -298,148 +298,321 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
   }
 
   void _showFilterDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Filter Walks'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Breed filter
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Breed (optional)',
-                    hintText: 'e.g., Golden Retriever',
+        builder: (context, setModalState) => DraggableScrollableSheet(
+          initialChildSize: 0.9,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) => Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: const Text(
+                        'Filter by Dog Characteristics',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (_selectedBreed != null ||
+                        _selectedSizes.isNotEmpty ||
+                        _selectedTemperaments.isNotEmpty ||
+                        _selectedEnergyLevels.isNotEmpty ||
+                        _selectedSpecialNeeds.isNotEmpty)
+                      TextButton(
+                        onPressed: () {
+                          setModalState(() {
+                            _selectedBreed = null;
+                            _selectedSizes.clear();
+                            _selectedTemperaments.clear();
+                            _selectedEnergyLevels.clear();
+                            _selectedSpecialNeeds.clear();
+                          });
+                        },
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Clear All'),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              // Filter content
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Breed filter
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Breed (optional)',
+                          hintText: 'e.g., Golden Retriever',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {
+                          setModalState(() {
+                            _selectedBreed = value.isEmpty ? null : value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      // Size filter
+                      _buildFilterChips<DogSize>(
+                        'Size',
+                        DogSize.values,
+                        _selectedSizes,
+                        (size) => size.toString().split('.').last,
+                        (size) {
+                          setModalState(() {
+                            if (_selectedSizes.contains(size)) {
+                              _selectedSizes.remove(size);
+                            } else {
+                              _selectedSizes.add(size);
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      // Temperament filter
+                      _buildFilterChips<DogTemperament>(
+                        'Temperament',
+                        DogTemperament.values,
+                        _selectedTemperaments,
+                        (temp) => temp.toString().split('.').last,
+                        (temp) {
+                          setModalState(() {
+                            if (_selectedTemperaments.contains(temp)) {
+                              _selectedTemperaments.remove(temp);
+                            } else {
+                              _selectedTemperaments.add(temp);
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      // Energy level filter
+                      _buildFilterChips<EnergyLevel>(
+                        'Energy Level',
+                        EnergyLevel.values,
+                        _selectedEnergyLevels,
+                        (level) => level.toString().split('.').last,
+                        (level) {
+                          setModalState(() {
+                            if (_selectedEnergyLevels.contains(level)) {
+                              _selectedEnergyLevels.remove(level);
+                            } else {
+                              _selectedEnergyLevels.add(level);
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      // Special needs filter
+                      _buildFilterChips<SpecialNeeds>(
+                        'Special Needs',
+                        SpecialNeeds.values.where((n) => n != SpecialNeeds.none).toList(),
+                        _selectedSpecialNeeds,
+                        (need) => need.toString().split('.').last,
+                        (need) {
+                          setModalState(() {
+                            if (_selectedSpecialNeeds.contains(need)) {
+                              _selectedSpecialNeeds.remove(need);
+                            } else {
+                              _selectedSpecialNeeds.add(need);
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 100), // Space for button
+                    ],
                   ),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      _selectedBreed = value.isEmpty ? null : value;
-                    });
-                  },
                 ),
-                const SizedBox(height: 16),
-                
-                // Size filter
-                const Text('Dog Size:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Wrap(
-                  spacing: 8,
-                  children: DogSize.values.map((size) {
-                    final isSelected = _selectedSizes.contains(size);
-                    return FilterChip(
-                      label: Text(size.toString().split('.').last),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setDialogState(() {
-                          if (selected) {
-                            _selectedSizes.add(size);
-                          } else {
-                            _selectedSizes.remove(size);
-                          }
-                        });
+              ),
+              // Apply button
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _applyFilters();
                       },
-                    );
-                  }).toList(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Apply Filters',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                
-                // Temperament filter
-                const Text('Temperament:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Wrap(
-                  spacing: 8,
-                  children: DogTemperament.values.map((temp) {
-                    final isSelected = _selectedTemperaments.contains(temp);
-                    return FilterChip(
-                      label: Text(temp.toString().split('.').last),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setDialogState(() {
-                          if (selected) {
-                            _selectedTemperaments.add(temp);
-                          } else {
-                            _selectedTemperaments.remove(temp);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                
-                // Energy level filter
-                const Text('Energy Level:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Wrap(
-                  spacing: 8,
-                  children: EnergyLevel.values.map((level) {
-                    final isSelected = _selectedEnergyLevels.contains(level);
-                    return FilterChip(
-                      label: Text(level.toString().split('.').last),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setDialogState(() {
-                          if (selected) {
-                            _selectedEnergyLevels.add(level);
-                          } else {
-                            _selectedEnergyLevels.remove(level);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                
-                // Special needs filter
-                const Text('Special Needs:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Wrap(
-                  spacing: 8,
-                  children: SpecialNeeds.values.where((n) => n != SpecialNeeds.none).map((need) {
-                    final isSelected = _selectedSpecialNeeds.contains(need);
-                    return FilterChip(
-                      label: Text(need.toString().split('.').last),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setDialogState(() {
-                          if (selected) {
-                            _selectedSpecialNeeds.add(need);
-                          } else {
-                            _selectedSpecialNeeds.remove(need);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setDialogState(() {
-                  _selectedBreed = null;
-                  _selectedSizes.clear();
-                  _selectedTemperaments.clear();
-                  _selectedEnergyLevels.clear();
-                  _selectedSpecialNeeds.clear();
-                });
-              },
-              child: const Text('Clear All'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _applyFilters();
-              },
-              child: const Text('Apply'),
-            ),
-          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips<T>(
+    String label,
+    List<T> options,
+    List<T> selected,
+    String Function(T) labelBuilder,
+    void Function(T) onToggle,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final isSelected = selected.contains(option);
+            return FilterChip(
+              label: Text(labelBuilder(option)),
+              selected: isSelected,
+              onSelected: (_) => onToggle(option),
+              selectedColor: Colors.green[100],
+              checkmarkColor: Colors.green[700],
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterButton() {
+    final hasActiveFilters = _selectedBreed != null ||
+        _selectedSizes.isNotEmpty ||
+        _selectedTemperaments.isNotEmpty ||
+        _selectedEnergyLevels.isNotEmpty ||
+        _selectedSpecialNeeds.isNotEmpty;
+
+    final filterCount = (_selectedBreed != null ? 1 : 0) +
+        _selectedSizes.length +
+        _selectedTemperaments.length +
+        _selectedEnergyLevels.length +
+        _selectedSpecialNeeds.length;
+
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: InkWell(
+        onTap: _showFilterDialog,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(
+                Icons.filter_list,
+                color: hasActiveFilters ? Colors.green[700] : Colors.grey[600],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Filter by Dog Characteristics',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (hasActiveFilters) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '$filterCount filter${filterCount > 1 ? 's' : ''} active',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[700],
+                        ),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap to filter by size, temperament, energy, and more',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.grey[600],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -514,11 +687,6 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.filter_list),
-              onPressed: _showFilterDialog,
-              tooltip: 'Filter walks',
-            ),
-            IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: _fetchRequests,
             ),
@@ -530,91 +698,52 @@ class _WalkRequestListScreenState extends State<WalkRequestListScreen>
             // Available Walks Tab
             _loading
                 ? const Center(child: CircularProgressIndicator())
-                : _filteredAvailableRequests.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.filter_alt_off,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _availableRequests.isEmpty
-                              ? t.t('no_available_walks')
-                              : 'No walks match your filters',
-                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                        ),
-                        if (_availableRequests.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedBreed = null;
-                                _selectedSizes.clear();
-                                _selectedTemperaments.clear();
-                                _selectedEnergyLevels.clear();
-                                _selectedSpecialNeeds.clear();
-                              });
-                              _applyFilters();
-                            },
-                            child: const Text('Clear Filters'),
-                          ),
-                        ],
-                      ],
-                    ),
-                  )
                 : Column(
                     children: [
-                      if (_selectedBreed != null ||
-                          _selectedSizes.isNotEmpty ||
-                          _selectedTemperaments.isNotEmpty ||
-                          _selectedEnergyLevels.isNotEmpty ||
-                          _selectedSpecialNeeds.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          color: Colors.blue[50],
-                          child: Row(
-                            children: [
-                              const Icon(Icons.filter_alt, size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '${_filteredAvailableRequests.length} of ${_availableRequests.length} walks',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.blue[800],
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedBreed = null;
-                                    _selectedSizes.clear();
-                                    _selectedTemperaments.clear();
-                                    _selectedEnergyLevels.clear();
-                                    _selectedSpecialNeeds.clear();
-                                  });
-                                  _applyFilters();
-                                },
-                                child: const Text('Clear', style: TextStyle(fontSize: 12)),
-                              ),
-                            ],
-                          ),
-                        ),
+                      _buildFilterButton(),
                       Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _filteredAvailableRequests.length,
-                          itemBuilder: (context, index) =>
-                              _buildRequestCard(_filteredAvailableRequests[index]),
-                        ),
+                        child: _filteredAvailableRequests.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.filter_alt_off,
+                                  size: 64,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _availableRequests.isEmpty
+                                      ? t.t('no_available_walks')
+                                      : 'No walks match your filters',
+                                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                                ),
+                                if (_availableRequests.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _selectedBreed = null;
+                                        _selectedSizes.clear();
+                                        _selectedTemperaments.clear();
+                                        _selectedEnergyLevels.clear();
+                                        _selectedSpecialNeeds.clear();
+                                      });
+                                      _applyFilters();
+                                    },
+                                    child: const Text('Clear Filters'),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _filteredAvailableRequests.length,
+                            itemBuilder: (context, index) =>
+                                _buildRequestCard(_filteredAvailableRequests[index]),
+                          ),
                       ),
                     ],
                   ),

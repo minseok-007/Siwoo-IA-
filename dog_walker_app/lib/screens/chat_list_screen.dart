@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../services/message_service.dart';
 import '../services/walk_request_service.dart';
 import '../services/user_service.dart';
@@ -31,11 +32,171 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   List<Map<String, dynamic>> _chats = [];
   bool _loading = true;
+  Map<String, int> _unreadCounts = {}; // Map of chatId -> unread message count
+  Map<String, DateTime> _lastReadTimes = {}; // Map of chatId -> last read time
+  Map<String, StreamSubscription> _messageSubscriptions = {}; // Real-time message listeners
 
   @override
   void initState() {
     super.initState();
-    _fetchChats();
+    _loadLastReadTimes().then((_) {
+      _fetchChats();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Cancel all message subscriptions
+    for (var subscription in _messageSubscriptions.values) {
+      subscription.cancel();
+    }
+    _messageSubscriptions.clear();
+    super.dispose();
+  }
+
+  Future<void> _loadLastReadTimes() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('read_messages')
+          .doc('read_times')
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        final times = (data?['times'] as Map<String, dynamic>?) ?? {};
+        final readTimes = <String, DateTime>{};
+        times.forEach((chatId, timestamp) {
+          if (timestamp is Timestamp) {
+            readTimes[chatId] = timestamp.toDate();
+          }
+        });
+        setState(() {
+          _lastReadTimes = readTimes;
+        });
+      }
+    } catch (e) {
+      print('Error loading last read times: $e');
+    }
+  }
+
+  Future<int> _getUnreadCount(String chatId) async {
+    try {
+      final lastReadTime = _lastReadTimes[chatId];
+      final currentUserId = widget.userId;
+      
+      // Get last message only (much faster)
+      final lastMessage = await _messageService.getLastMessage(chatId);
+      if (lastMessage == null) return 0;
+      
+      // If last message is from current user, no unread messages
+      if (lastMessage.senderId == currentUserId) return 0;
+      
+      // If we have a last read time, check if last message is after it
+      if (lastReadTime != null) {
+        if (!lastMessage.timestamp.isAfter(lastReadTime)) {
+          return 0; // All messages read
+        }
+      }
+      
+      // Count unread messages by getting recent messages and filtering in memory
+      // This avoids index requirements
+      try {
+        final recentMessages = await FirebaseFirestore.instance
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .orderBy('timestamp', descending: true)
+            .limit(50) // Limit to recent 50 messages for performance
+            .get();
+        
+        int unreadCount = 0;
+        for (var doc in recentMessages.docs) {
+          final messageData = doc.data();
+          final senderId = messageData['senderId'] as String?;
+          final timestamp = messageData['timestamp'] as Timestamp?;
+          
+          // Skip messages from current user
+          if (senderId == currentUserId) continue;
+          
+          // If we have a last read time, only count messages after it
+          if (lastReadTime != null && timestamp != null) {
+            if (timestamp.toDate().isAfter(lastReadTime)) {
+              unreadCount++;
+            } else {
+              // Messages are ordered by timestamp desc, so we can break early
+              break;
+            }
+          } else {
+            // No read time, count all messages from others
+            unreadCount++;
+          }
+        }
+        
+        return unreadCount;
+      } catch (e) {
+        // If query fails, estimate based on last message
+        if (lastReadTime == null || lastMessage.timestamp.isAfter(lastReadTime)) {
+          return 1; // At least 1 unread message
+        }
+        return 0;
+      }
+    } catch (e) {
+      print('Error getting unread count for $chatId: $e');
+      return 0;
+    }
+  }
+
+  void _setupMessageListener(String chatId) {
+    // Cancel existing subscription if any
+    _messageSubscriptions[chatId]?.cancel();
+    
+    // Listen to new messages in real-time
+    final subscription = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .limit(1)
+        .snapshots()
+        .listen((snapshot) async {
+      if (!mounted) return;
+      
+      // Check if there's a new message
+      if (snapshot.docs.isNotEmpty) {
+        final lastMessageDoc = snapshot.docs.first;
+        final lastMessageData = lastMessageDoc.data();
+        final senderId = lastMessageData['senderId'] as String?;
+        final timestamp = lastMessageData['timestamp'] as Timestamp?;
+        
+        // Only update if message is from someone else
+        if (senderId != widget.userId && timestamp != null) {
+          final lastReadTime = _lastReadTimes[chatId];
+          
+          // Check if this is a new unread message
+          if (lastReadTime == null || timestamp.toDate().isAfter(lastReadTime)) {
+            // Update unread count
+            final unreadCount = await _getUnreadCount(chatId);
+            
+            if (mounted) {
+              setState(() {
+                _unreadCounts[chatId] = unreadCount;
+                // Update chat item's unread count
+                final index = _chats.indexWhere((chat) => chat['chatId'] == chatId);
+                if (index != -1) {
+                  _chats[index]['unreadCount'] = unreadCount;
+                  // Update last message in chat object
+                  _chats[index]['lastMessage'] = MessageModel.fromFirestore(lastMessageDoc);
+                }
+              });
+            }
+          }
+        }
+      }
+    });
+    
+    _messageSubscriptions[chatId] = subscription;
   }
 
   Future<void> _fetchChats() async {
@@ -123,6 +284,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
         _chats = chats;
         _loading = false;
       });
+
+      // Setup real-time listeners for all chats
+      for (var chat in chats) {
+        final chatId = chat['chatId'] as String;
+        _setupMessageListener(chatId);
+      }
+
+      // Calculate initial unread counts quickly (using last message only)
+      await _calculateUnreadCountsQuick(chats);
     } catch (e) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -286,12 +456,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
-  void _openChat(Map<String, dynamic> chat) {
+  void _openChat(Map<String, dynamic> chat) async {
     final walkRequest = chat['walkRequest'] as WalkRequestModel;
     final otherUser = chat['otherUser'] as UserModel;
     final chatId = chat['chatId'] as String;
 
-    Navigator.push(
+    // Mark messages as read when opening chat
+    await _markChatAsRead(chatId);
+
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
           builder: (context) => ChatScreen(
@@ -303,6 +476,110 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ),
       );
+    
+    // Refresh chat list when returning
+    if (result == true || mounted) {
+      _fetchChats();
+    }
+  }
+
+  Future<void> _calculateUnreadCountsQuick(List<Map<String, dynamic>> chats) async {
+    // Quick calculation using last message only (much faster)
+    for (var chat in chats) {
+      final chatId = chat['chatId'] as String;
+      final lastMessage = chat['lastMessage'] as MessageModel?;
+      
+      if (lastMessage == null) {
+        chat['unreadCount'] = 0;
+        _unreadCounts[chatId] = 0;
+        continue;
+      }
+      
+      final lastReadTime = _lastReadTimes[chatId];
+      final currentUserId = widget.userId;
+      
+      // Quick check: if last message is from current user, no unread
+      if (lastMessage.senderId == currentUserId) {
+        chat['unreadCount'] = 0;
+        _unreadCounts[chatId] = 0;
+        continue;
+      }
+      
+      // If last message is after last read time, mark as unread (will get exact count from listener)
+      if (lastReadTime == null || lastMessage.timestamp.isAfter(lastReadTime)) {
+        // Set initial count to 1, real-time listener will update with exact count
+        chat['unreadCount'] = 1;
+        _unreadCounts[chatId] = 1;
+      } else {
+        chat['unreadCount'] = 0;
+        _unreadCounts[chatId] = 0;
+      }
+    }
+    
+    if (mounted) {
+      setState(() {});
+    }
+    
+    // Get exact counts in background (but don't block UI)
+    _calculateUnreadCountsAsync(chats);
+  }
+
+  Future<void> _calculateUnreadCountsAsync(List<Map<String, dynamic>> chats) async {
+    // Calculate exact unread counts in background without blocking UI
+    for (var chat in chats) {
+      final chatId = chat['chatId'] as String;
+      final unreadCount = await _getUnreadCount(chatId);
+      
+      if (mounted) {
+        setState(() {
+          _unreadCounts[chatId] = unreadCount;
+          final index = _chats.indexWhere((c) => c['chatId'] == chatId);
+          if (index != -1) {
+            _chats[index]['unreadCount'] = unreadCount;
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _markChatAsRead(String chatId) async {
+    try {
+      final now = DateTime.now();
+      
+      // Get last message to set read time
+      final lastMessage = await _messageService.getLastMessage(chatId);
+      final readTime = lastMessage != null && lastMessage.timestamp.isAfter(now) 
+          ? lastMessage.timestamp 
+          : now;
+      
+      setState(() {
+        _lastReadTimes[chatId] = readTime;
+        _unreadCounts[chatId] = 0;
+        // Update chat item's unread count
+        final index = _chats.indexWhere((chat) => chat['chatId'] == chatId);
+        if (index != -1) {
+          _chats[index]['unreadCount'] = 0;
+        }
+      });
+      
+      // Save to Firestore
+      final timesMap = <String, Timestamp>{};
+      _lastReadTimes.forEach((id, dateTime) {
+        timesMap[id] = Timestamp.fromDate(dateTime);
+      });
+      
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('read_messages')
+          .doc('read_times')
+          .set({
+        'times': timesMap,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error marking chat as read: $e');
+    }
   }
 
   String _formatTime(DateTime dateTime) {
@@ -368,6 +645,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 final walkRequest = chat['walkRequest'] as WalkRequestModel;
                 final otherUser = chat['otherUser'] as UserModel;
                 final lastMessage = chat['lastMessage'] as MessageModel?;
+                final chatId = chat['chatId'] as String;
+                // Get unread count from map first, then fallback to chat object
+                final unreadCount = _unreadCounts[chatId] ?? chat['unreadCount'] as int? ?? 0;
 
                 return Card(
                   margin: const EdgeInsets.symmetric(
@@ -380,18 +660,48 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   ),
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(16),
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.indigo[100],
-                      child: Icon(Icons.person, color: Colors.indigo[600]),
+                    leading: Stack(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Colors.indigo[100],
+                          child: Icon(Icons.person, color: Colors.indigo[600]),
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     title: Row(
                       children: [
                         Expanded(
                           child: Text(
                             otherUser.fullName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
+                            style: TextStyle(
+                              fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500,
                               fontSize: 16,
+                              color: unreadCount > 0 ? Colors.black : Colors.grey[700],
                             ),
                           ),
                         ),
@@ -449,8 +759,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 child: Text(
                                   lastMessage.text,
                                   style: TextStyle(
-                                    color: Colors.grey[700],
+                                    color: unreadCount > 0 ? Colors.black87 : Colors.grey[700],
                                     fontSize: 13,
+                                    fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -460,8 +771,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               Text(
                                 _formatTime(lastMessage.timestamp),
                                 style: TextStyle(
-                                  color: Colors.grey[500],
+                                  color: unreadCount > 0 ? Colors.blue[700] : Colors.grey[500],
                                   fontSize: 12,
+                                  fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
                                 ),
                               ),
                             ],

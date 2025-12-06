@@ -9,7 +9,15 @@ import 'auth_wrapper.dart';
 import '../l10n/app_localizations.dart';
 
 /// Email/password sign-up screen.
-/// - Collects the user type (owner/walker) along with basic personal details.
+/// 
+/// Collects user registration information:
+/// - Basic info: Full name, email, password
+/// - User type selection: Dog Owner or Dog Walker
+/// - Walker preferences (if walker is selected): Experience level, distance, 
+///   preferred dog sizes/temperaments/energy levels, available days/time slots
+/// 
+/// Note: Phone number and password confirmation fields have been removed from the UI
+/// for simplified registration flow. Phone number is passed as empty string to backend.
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -21,13 +29,10 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   final _fullNameController = TextEditingController();
-  final _phoneController = TextEditingController();
 
   UserType _selectedUserType = UserType.dogOwner;
   bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
 
   // Walker preference fields
   ExperienceLevel _experienceLevel = ExperienceLevel.beginner;
@@ -43,14 +48,20 @@ class _SignupScreenState extends State<SignupScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     _fullNameController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
   /// Validates the form and submits the sign-up request.
-  /// - On success, navigates to `AuthWrapper` so routing follows auth state.
+  /// 
+  /// Flow:
+  /// 1. Validates form fields (email, password, full name)
+  /// 2. Validates walker preferences if user type is dog walker
+  /// 3. Calls AuthProvider.signUp to create account in Firebase Auth and Firestore
+  /// 4. On success: Signs out immediately and navigates to login screen with success message
+  /// 5. On failure: Shows error message via SnackBar
+  /// 
+  /// Note: Phone number is passed as empty string since it's been removed from UI.
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -77,7 +88,6 @@ class _SignupScreenState extends State<SignupScreen> {
       email: _emailController.text.trim(),
       password: _passwordController.text,
       fullName: _fullNameController.text.trim(),
-      phoneNumber: _phoneController.text.trim(),
       userType: _selectedUserType,
       experienceLevel: _experienceLevel,
       maxDistance: _maxDistance,
@@ -89,12 +99,28 @@ class _SignupScreenState extends State<SignupScreen> {
       supportedSpecialNeeds: _supportedSpecialNeeds,
     );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
+      // Sign out immediately so user can sign in
+      await authProvider.signOut();
+      
+      // Navigate to login screen
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const AuthWrapper()),
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
       );
-    } else if (mounted) {
+      
+      // Show success message
+      final t = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(t.t('account_created_successfully') ?? 'Account created successfully! Please sign in.'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } else {
       final t = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -213,22 +239,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Phone Number Field
-                TextFormField(
-                  controller: _phoneController,
-                  decoration: InputDecoration(
-                    labelText: t.t('phone_number'),
-                    prefixIcon: Icon(Icons.phone),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                  ),
-                  validator: (v) => Validators.validatePhoneNumber(v, context),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 16),
-
                 // Password Field
                 TextFormField(
                   controller: _passwordController,
@@ -254,38 +264,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   validator: (v) => Validators.validatePassword(v, context),
                   obscureText: _obscurePassword,
-                ),
-                const SizedBox(height: 16),
-
-                // Confirm Password Field
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  decoration: InputDecoration(
-                    labelText: t.t('confirm_password'),
-                    prefixIcon: Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirmPassword
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureConfirmPassword = !_obscureConfirmPassword;
-                        });
-                      },
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                  ),
-                  validator: (value) => Validators.validateConfirmPassword(
-                    value,
-                    _passwordController.text,
-                    context,
-                  ),
-                  obscureText: _obscureConfirmPassword,
                 ),
                 const SizedBox(height: 24),
                 if (_selectedUserType == UserType.dogWalker)

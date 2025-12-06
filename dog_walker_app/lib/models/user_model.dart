@@ -24,7 +24,6 @@ class UserModel {
   final String id;
   final String email;
   final String fullName;
-  final String phoneNumber;
   final UserType userType;
   final String? profileImageUrl;
   final DateTime createdAt;
@@ -54,7 +53,6 @@ class UserModel {
     required this.id,
     required this.email,
     required this.fullName,
-    required this.phoneNumber,
     required this.userType,
     this.profileImageUrl,
     required this.createdAt,
@@ -83,7 +81,6 @@ class UserModel {
       id: doc.id,
       email: data['email'] ?? '',
       fullName: data['fullName'] ?? '',
-      phoneNumber: data['phoneNumber'] ?? '',
       userType: UserType.values.firstWhere(
         (e) => e.toString() == 'UserType.${data['userType']}',
         orElse: () => UserType.dogOwner,
@@ -171,7 +168,6 @@ class UserModel {
     return {
       'email': email,
       'fullName': fullName,
-      'phoneNumber': phoneNumber,
       'userType': userType.toString().split('.').last,
       'profileImageUrl': profileImageUrl,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -206,7 +202,6 @@ class UserModel {
     String? id,
     String? email,
     String? fullName,
-    String? phoneNumber,
     UserType? userType,
     String? profileImageUrl,
     DateTime? createdAt,
@@ -229,7 +224,6 @@ class UserModel {
       id: id ?? this.id,
       email: email ?? this.email,
       fullName: fullName ?? this.fullName,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
       userType: userType ?? this.userType,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       createdAt: createdAt ?? this.createdAt,

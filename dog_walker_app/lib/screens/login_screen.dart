@@ -8,7 +8,16 @@ import 'auth_wrapper.dart';
 import '../l10n/app_localizations.dart';
 
 /// Email/password login screen.
-/// - Invokes `AuthProvider` via Provider and navigates according to the result.
+/// 
+/// Features:
+/// - Email and password authentication
+/// - Password visibility toggle
+/// - Forgot password functionality
+/// - Simplified password validation (only checks for non-empty, no complexity hints)
+/// - Generic error message for security ("Invalid email or password")
+/// 
+/// On successful login, navigates to AuthWrapper which routes to appropriate home screen.
+/// On failure, displays generic error message to prevent email enumeration attacks.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -30,7 +39,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// Validates the form and performs the sign-in request.
-  /// - AuthProvider manages loading/errors; the UI surfaces feedback via SnackBar.
+  /// 
+  /// Flow:
+  /// 1. Validates form fields (email format, password non-empty)
+  /// 2. Calls AuthProvider.signIn to authenticate with Firebase
+  /// 3. On success: Navigates to AuthWrapper (which routes to home screen)
+  /// 4. On failure: Shows generic "Invalid email or password" message via SnackBar
+  /// 
+  /// Security: Always shows generic error message regardless of failure reason
+  /// to prevent email enumeration attacks.
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -43,19 +60,22 @@ class _LoginScreenState extends State<LoginScreen> {
       password: _passwordController.text,
     );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => const AuthWrapper(),
         ),
       );
-    } else if (mounted) {
-      final t = AppLocalizations.of(context);
+    } else {
+      // Show error message when login fails
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.error ?? t.t('failed_to_sign_in')),
+          content: Text('Invalid email or password'),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
         ),
       );
     }
@@ -168,7 +188,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     filled: true,
                   ),
-                  validator: (v) => Validators.validatePassword(v, context),
+                  // Simplified validation: only check if password is not empty
+                  // No complexity requirements (uppercase, lowercase, numbers) to avoid UX friction
+                  validator: (v) => v == null || v.isEmpty ? (AppLocalizations.of(context).t('err_password_required')) : null,
                   obscureText: _obscurePassword,
                 ),
                 const SizedBox(height: 8),

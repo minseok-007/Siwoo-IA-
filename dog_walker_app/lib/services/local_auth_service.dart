@@ -19,7 +19,6 @@ class LocalAuthService {
         id: userData['id'],
         email: userData['email'],
         fullName: userData['fullName'],
-        phoneNumber: userData['phoneNumber'],
         userType: userData['userType'] == 'dogOwner' ? UserType.dogOwner : UserType.dogWalker,
         createdAt: DateTime.parse(userData['createdAt']),
         updatedAt: DateTime.parse(userData['updatedAt']),
@@ -33,7 +32,6 @@ class LocalAuthService {
     required String email,
     required String password,
     required String fullName,
-    required String phoneNumber,
     required UserType userType,
   }) async {
     try {
@@ -52,7 +50,6 @@ class LocalAuthService {
         'email': email,
         'password': password, // In real app, this should be hashed
         'fullName': fullName,
-        'phoneNumber': phoneNumber,
         'userType': userType == UserType.dogOwner ? 'dogOwner' : 'dogWalker',
         'createdAt': DateTime.now().toIso8601String(),
         'updatedAt': DateTime.now().toIso8601String(),

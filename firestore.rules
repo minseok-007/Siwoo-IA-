@@ -35,22 +35,62 @@ service cloud.firestore {
       match /deviceTokens/{token} {
         allow read, write, delete: if isUser(userId);
       }
+      
+      match /read_notifications/{doc} {
+        allow read, write: if isUser(userId);
+      }
+      
+      match /read_messages/{doc} {
+        allow read, write: if isUser(userId);
+      }
     }
 
     match /dogs/{dogId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource == null ||
+        resource.data.ownerId == request.auth.uid
+      );
+      allow delete: if isSignedIn() && (
+        resource == null ||
+        resource.data.ownerId == request.auth.uid
+      );
     }
 
     match /walk_requests/{walkId} {
-      allow read: if resource != null && isWalkParticipantData(resource.data);
+      allow read: if isSignedIn() && (
+        resource == null || 
+        isWalkParticipantData(resource.data)
+      );
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update: if isSignedIn() && (
+        resource == null ||
         resource.data.ownerId == request.auth.uid ||
         (resource.data.walkerId != null && resource.data.walkerId == request.auth.uid)
       );
-      allow delete: if resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && (
+        resource == null ||
+        resource.data.ownerId == request.auth.uid
+      );
+    }
+    
+    match /walk_applications/{applicationId} {
+      allow read: if isSignedIn() && (
+        resource == null ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.walkerId == request.auth.uid
+      );
+      allow create: if isSignedIn() && request.resource.data.walkerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource == null ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.walkerId == request.auth.uid
+      );
+      allow delete: if isSignedIn() && (
+        resource == null ||
+        resource.data.walkerId == request.auth.uid
+      );
     }
 
     match /reviews/{reviewId} {
@@ -73,7 +113,8 @@ service cloud.firestore {
     }
 
     match /chats/{chatId} {
-      allow read: if resource != null && (
+      allow read: if isSignedIn() && (
+        resource == null ||
         resource.data.ownerId == request.auth.uid ||
         (resource.data.walkerId != null && resource.data.walkerId == request.auth.uid)
       );

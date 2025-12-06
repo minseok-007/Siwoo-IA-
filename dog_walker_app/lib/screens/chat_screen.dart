@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/message_service.dart';
 import '../models/message_model.dart';
 import '../models/walk_request_model.dart';
@@ -52,6 +53,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initializeChat() async {
     try {
+      // Mark as not loading immediately so UI shows faster
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Initialize chat in background (non-blocking)
       String? ownerId = widget.walkRequest?.ownerId;
       String? walkerId = widget.walkRequest?.walkerId;
 
@@ -64,18 +71,19 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
 
-      await _service.initializeChat(
+      // Initialize chat without blocking UI
+      _service.initializeChat(
         widget.chatId,
         ownerId: ownerId,
         walkerId: walkerId,
-      );
-      setState(() {
-        _isLoading = false;
+      ).catchError((e) {
+        // Ignore errors - chat might already exist
       });
+      
+      // Mark messages as read immediately when opening chat
+      _markMessagesAsRead();
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      // Ignore errors
     }
   }
 
@@ -84,6 +92,43 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _markMessagesAsRead() async {
+    try {
+      final now = DateTime.now();
+      
+      // Get last message to set read time (non-blocking)
+      _service.getLastMessage(widget.chatId).then((lastMessage) async {
+        final readTime = lastMessage != null && lastMessage.timestamp.isAfter(now)
+            ? lastMessage.timestamp
+            : now;
+        
+        // Save to Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.userId)
+            .collection('read_messages')
+            .doc('read_times')
+            .set({
+          'times.${widget.chatId}': Timestamp.fromDate(readTime),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }).catchError((e) {
+        // If error getting last message, just use current time
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.userId)
+            .collection('read_messages')
+            .doc('read_times')
+            .set({
+          'times.${widget.chatId}': Timestamp.fromDate(now),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      });
+    } catch (e) {
+      print('Error marking messages as read: $e');
+    }
   }
 
   /// Creates/persists the outgoing message and scrolls to the bottom afterward.

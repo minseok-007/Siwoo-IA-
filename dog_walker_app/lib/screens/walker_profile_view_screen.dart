@@ -131,8 +131,6 @@ class WalkerProfileViewScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     _buildInfoRow(Icons.email, walker.email),
-                    const SizedBox(height: 8),
-                    _buildInfoRow(Icons.phone, walker.phoneNumber),
                   ],
                 ),
               ),
